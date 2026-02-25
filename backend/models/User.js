@@ -35,19 +35,16 @@ PRE-SAVE MIDDLEWARE
 This runs automatically before a user is saved.
 We hash the password here so we NEVER store plain text passwords.
 */
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
 
-  // Only hash password if it was modified
+  // If password not modified, skip hashing
   if (!this.isModified('password')) {
-    return next();
+    return;
   }
 
   const salt = await bcrypt.genSalt(10);
-
-  // Hash password
   this.password = await bcrypt.hash(this.password, salt);
 
-  next();
 });
 
 /*
