@@ -26,15 +26,16 @@ exports.createQuiz = async (req, res) => {
     }
 
     // 1️⃣ Create Quiz
-    const quiz = await Quiz.create({
-      title,
-      description,
-      subject,
-      difficultyLevel,
-      timeLimit,
-      totalMarks,
-      createdBy: req.user._id
-    });
+   const quiz = await Quiz.create({
+  title,
+  description,
+  subject,
+  difficultyLevel,
+  timeLimit,
+  totalMarks,
+  createdBy: req.user._id,
+  isPublished: true
+});
 
     // 2️⃣ Prepare questions with quizId
     const formattedQuestions = questions.map((q) => ({
@@ -80,5 +81,19 @@ exports.getPublishedQuizzes = async (req, res) => {
     res.status(500).json({
       message: "Server error while fetching quizzes"
     });
+  }
+};
+
+
+// GET /api/quizzes/admin  (admin: list quizzes created by me)
+exports.getMyQuizzes = async (req, res) => {
+  try {
+    const quizzes = await Quiz.find({ createdBy: req.user._id })
+      .select('-__v')
+      .sort({ createdAt: -1 });
+    return res.json(quizzes);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error while fetching my quizzes' });
   }
 };

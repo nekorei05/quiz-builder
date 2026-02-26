@@ -40,12 +40,14 @@ Role-based authorization
 Example: only admin can access
 */
 exports.authorize = (...roles) => {
+  const allowed = roles.map(r => String(r).toLowerCase());
   return (req, res, next) => {
-
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Access denied: insufficient role" });
+    if (!req.user) return res.status(401).json({ message: 'Not authorized' });
+    const userRole = String(req.user.role || '').toLowerCase();
+    if (!allowed.includes(userRole)) {
+      return res.status(403).json({ message: 'Access denied: insufficient role' });
     }
-
     next();
   };
 };
+``

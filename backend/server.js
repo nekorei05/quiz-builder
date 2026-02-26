@@ -8,7 +8,8 @@ const authRoutes = require("./routes/authRoutes");
 
 // Middleware Imports
 const { protect, authorize } = require("./middleware/authMiddleware");
-const quizRoutes = require("./routes/quizRoutes");
+const quizRoutes = require("./routes/quizRoutes")
+
 
 
 const app = express();
@@ -19,9 +20,10 @@ Global Middleware
 ========================
 */
 
-// Enable CORS
+
+
 app.use(cors({
-  origin: "http://localhost:5174",
+  origin: ["http://localhost:5173", "http://localhost:5174"],
   credentials: true
 }));
 
@@ -54,7 +56,7 @@ app.get("/api/admin-only", protect, authorize("admin"), (req, res) => {
 });
 
 app.use("/api/quizzes", quizRoutes);
-
+\
 // Root route
 app.get("/", (req, res) => {
   res.send("Quiz Builder API is running");
