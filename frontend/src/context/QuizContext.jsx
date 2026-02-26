@@ -92,18 +92,46 @@ export function QuizProvider({ children }) {
     setScore(0);
   };
 
-  const createQuiz = (quizData) => {
-    const newQuiz = {
-      ...quizData,
-      id: Date.now().toString(),
-      status: "published",
-      createdAt: new Date().toISOString(),
-    };
+  //create quiz
+  const createQuiz = async (quizData) => {
+  try {
+    const token = localStorage.getItem("token");
 
-    setQuizzes((prev) => [...prev, newQuiz]);
+    const response = await fetch("http://localhost:5000/api/quizzes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        title: quizData.title,
+        description: quizData.description,
+        subject: "General",
+        difficultyLevel: quizData.difficulty,
+        timeLimit: quizData.timeLimit,
+        totalMarks: quizData.questions.length * 10,
+        questions: quizData.questions.map((q) => ({
+          questionText: q.text,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          difficulty: quizData.difficulty,
+        })),
+      }),
+    });
 
-    return newQuiz;
-  };
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message);
+    }
+
+    return data;
+
+  } catch (error) {
+    console.error("Create quiz error:", error);
+    throw error;
+  }
+};
 
   const updateQuiz = (id, quizData) => {
     setQuizzes((prev) =>

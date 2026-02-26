@@ -103,7 +103,7 @@ export default function CreateQuiz({
     navigate(-1);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim()) {
       toastError("Quiz title is required");
       return;
@@ -132,11 +132,10 @@ export default function CreateQuiz({
       updateQuiz(initialData.id, quizData);
       toastSuccess("Quiz updated");
     } else {
-      createQuiz(quizData);
-      toastSuccess("Quiz created");
+     await createQuiz(quizData);
+toastSuccess("Quiz created");
     }
-
-    navigate("/admin/quizzes");
+navigate("/admin/quizzes");
   };
 
   return (
