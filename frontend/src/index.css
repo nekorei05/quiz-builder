@@ -1,0 +1,169 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
+
+    --primary: 172 66% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 25% 10%;
+
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 172 50% 92%;
+    --accent-foreground: 172 66% 25%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 210 80% 52%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: 172 66% 40%;
+
+    --radius: 0.75rem;
+
+
+    --sidebar-background: 220 25% 12%;
+    --sidebar-foreground: 220 10% 55%;
+    --sidebar-primary: 172 66% 50%;
+    --sidebar-accent: 220 20% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 20% 20%;
+
+ 
+    --shadow-sm: 0 1px 2px hsl(220 25% 10% / 0.05);
+    --shadow-md: 0 4px 12px hsl(220 25% 10% / 0.08);
+    --shadow-lg: 0 8px 30px hsl(220 25% 10% / 0.12);
+    --shadow-glow: 0 0 20px hsl(172 66% 40% / 0.15);
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 220 10% 93%;
+
+    --card: 220 22% 12%;
+    --card-foreground: 220 10% 93%;
+
+    --primary: 172 66% 50%;
+    --primary-foreground: 220 25% 8%;
+
+    --secondary: 220 20% 18%;
+    --secondary-foreground: 220 10% 93%;
+
+    --muted: 220 20% 16%;
+    --muted-foreground: 220 10% 55%;
+
+    --border: 220 20% 18%;
+    --input: 220 20% 18%;
+    --ring: 172 66% 50%;
+
+    --sidebar-background: 220 28% 6%;
+    --sidebar-foreground: 220 10% 55%;
+    --sidebar-primary: 172 66% 50%;
+    --sidebar-accent: 220 25% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 20% 15%;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Roboto, sans-serif;
+    font-size: 14px; 
+  }
+}
+
+
+@layer utilities {
+
+  .glass-card {
+    @apply bg-card backdrop-blur-sm rounded-2xl;
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-md);
+  }
+
+  .stat-card {
+    @apply bg-card rounded-2xl p-6 transition-all duration-200;
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-sm);
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .glow-border {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--info)));
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out both;
+  }
+}
+
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
