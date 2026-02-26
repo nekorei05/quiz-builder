@@ -1,5 +1,5 @@
-import { createContext, useContext, useState } from "react";
-
+import { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 const QuizContext = createContext();
 
 export function useQuiz() {
@@ -12,46 +12,7 @@ export function useQuiz() {
   return context;
 }
 
-const mockQuizzes = [
-  {
-    id: "1",
-    title: "Math Basics",
-    difficulty: "easy",
-    timeLimit: 10,
-    status: "published",
-    description: "Basic arithmetic operations",
-    questions: [
-      {
-        id: "q1",
-        text: "2 + 2 = ?",
-        options: ["3", "4", "5", "6"],
-        correctAnswer: 1,
-      },
-      {
-        id: "q2",
-        text: "5 - 3 = ?",
-        options: ["1", "2", "3", "4"],
-        correctAnswer: 1,
-      },
-    ],
-  },
-  {
-    id: "2",
-    title: "Science 101",
-    difficulty: "medium",
-    timeLimit: 15,
-    status: "published",
-    description: "Fundamental science concepts",
-    questions: [
-      {
-        id: "q1",
-        text: "What is the chemical formula for water?",
-        options: ["H2O", "CO2", "O2", "NaCl"],
-        correctAnswer: 0,
-      },
-    ],
-  },
-];
+
 
 const mockAttempts = [
   {
@@ -73,10 +34,43 @@ const mockAttempts = [
 ];
 
 export function QuizProvider({ children }) {
-  const [quizzes, setQuizzes] = useState(mockQuizzes);
+  const { user } = useAuth();
+const [quizzes, setQuizzes] = useState([]);
   const [attempts, setAttempts] = useState(mockAttempts);
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [score, setScore] = useState(0);
+
+  useEffect(() => {
+  const fetchQuizzes = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) return;
+
+      const response = await fetch("http://localhost:5000/api/quizzes", {
+        headers: {
+          Authorization: "Bearer " + token
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message);
+      }
+
+      setQuizzes(data);
+
+    } catch (error) {
+      console.error("Failed to fetch quizzes:", error);
+    }
+  };
+
+  if (user) {
+    fetchQuizzes();
+  }
+
+}, [user]);
 
   const startQuiz = (quiz) => {
     setCurrentQuiz(quiz);
