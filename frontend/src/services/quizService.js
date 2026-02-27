@@ -55,8 +55,23 @@ export async function updateQuiz(id, data) {
   const res = await fetch(`${BASE_URL}/quizzes/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      title: data.title,
+      description: data.description || "",
+      subject: data.subject || "General",
+      difficultyLevel: data.difficultyLevel || data.difficulty,
+      timeLimit: data.timeLimit,
+      totalMarks: data.questions.length * 10,
+      questions: data.questions.map((q) => ({
+        questionText: q.questionText || q.text,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        difficulty:
+          q.difficulty || data.difficultyLevel || data.difficulty,
+      })),
+    }),
   });
+
   return handleResponse(res);
 }
 

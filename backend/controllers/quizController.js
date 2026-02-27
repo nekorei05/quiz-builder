@@ -94,16 +94,42 @@ exports.getQuizById = async (req, res) => {
 */
 exports.updateQuiz = async (req, res) => {
   try {
-    const quiz = await Quiz.findOne({ _id: req.params.id, createdBy: req.user._id });
-    if (!quiz) return res.status(404).json({ message: "Quiz not found or not authorized" });
+    const { title, description, subject, difficultyLevel, timeLimit, totalMarks, questions } = req.body;
 
-    const allowedFields = ["title", "description", "subject", "difficultyLevel", "timeLimit", "totalMarks", "isPublished"];
-    allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined) quiz[field] = req.body[field];
+    const quiz = await Quiz.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
     });
 
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found or not authorized" });
+    }
+
+    // ─── Update quiz metadata ───
+    quiz.title = title;
+    quiz.description = description;
+    quiz.subject = subject;
+    quiz.difficultyLevel = difficultyLevel;
+    quiz.timeLimit = timeLimit;
+    quiz.totalMarks = totalMarks;
+
     await quiz.save();
-    return res.json({ message: "Quiz updated", quiz });
+
+    // ─── Replace all questions ───
+    await Question.deleteMany({ quizId: quiz._id });
+
+    const formattedQuestions = questions.map((q) => ({
+      quizId: quiz._id,
+      questionText: q.questionText,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      difficulty: q.difficulty,
+    }));
+
+    await Question.insertMany(formattedQuestions);
+
+    return res.json({ message: "Quiz fully updated successfully" });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Error updating quiz" });
