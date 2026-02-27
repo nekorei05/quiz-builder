@@ -56,7 +56,7 @@ app.get("/api/admin-only", protect, authorize("admin"), (req, res) => {
 });
 
 app.use("/api/quizzes", quizRoutes);
-\
+
 // Root route
 app.get("/", (req, res) => {
   res.send("Quiz Builder API is running");

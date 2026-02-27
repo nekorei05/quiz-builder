@@ -9,7 +9,8 @@ const OPTION_LABELS = ["A", "B", "C", "D", "E"];
 export default function QuestionCard({ question, selectedAnswer = null, onSelect = () => {} }) {
   if (!question) return null;
 
-  const text = question.text || "Untitled question";
+  // ✅ Backend returns questionText, fallback to text for any local/mock data
+  const text = question.questionText || question.text || "Untitled question";
   const options = Array.isArray(question.options) ? question.options : [];
   const difficulty = question.difficulty || "medium";
   const diffStyle = DIFF_STYLE[difficulty] || "bg-muted text-muted-foreground border-border";

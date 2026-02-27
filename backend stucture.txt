@@ -1,0 +1,35 @@
+quiz-builder
+│
+├── backend/
+│   ├── server.js
+│   │
+│   ├── config/
+│   │   ├── db.js
+│   │   └── env.js
+│   │
+│   ├── routes/
+│   │   ├── authRoutes.js
+│   │   ├── quizRoutes.js
+│   │   └── analyticsRoutes.js
+│   │
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── quizController.js
+│   │   └── analyticsController.js
+│   │
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Quiz.js
+│   │   ├── Question.js
+│   │   └── Result.js
+│   │
+│   ├── middleware/
+│   │   ├── authMiddleware.js
+│   │   └── errorHandler.js
+│   │
+│   ├── utils/
+│   │   └── helpers.js
+│   │
+│   ├── .env
+│   ├── package.json
+│   └── package-lock.json

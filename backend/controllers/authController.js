@@ -2,19 +2,23 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
 /*
-Function to generate JWT
+ Function to generate JWT 
+ Now includes BOTH id and role
 */
-const generateToken = (id) => {
+const generateToken = (user) => {
   return jwt.sign(
-    { id },                     // payload
-    process.env.JWT_SECRET,     // secret key
+    {
+      id: user._id,
+      role: user.role            // ✅ IMPORTANT: Include role in token
+    },
+    process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE }
   );
 };
 
 /*
-@desc   Register new user
-@route  POST /api/auth/register
+ @desc Register new user
+ @route POST /api/auth/register
 */
 exports.registerUser = async (req, res) => {
   try {
@@ -22,29 +26,28 @@ exports.registerUser = async (req, res) => {
 
     // Check if user already exists
     const userExists = await User.findOne({ email });
-
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Create user (password will auto-hash because of pre-save middleware)
+    // Create new user in MongoDB
     const user = await User.create({
       name,
       email,
       password,
-      role
+      role // MongoDB will store the correct role
     });
 
     if (user) {
-     res.status(201).json({
-  token: generateToken(user._id),
-  user: {
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role
-  }
-});
+      res.status(201).json({
+        token: generateToken(user), // ✅ Includes role now
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      });
     }
 
   } catch (error) {
@@ -52,29 +55,28 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-
 /*
-@desc   Login user
-@route  POST /api/auth/login
+ @desc Login user
+ @route POST /api/auth/login
 */
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Find user by email
     const user = await User.findOne({ email });
 
-    // Check if user exists and password matches
+    // Validate credentials
     if (user && (await user.matchPassword(password))) {
-
-    res.json({
-  token: generateToken(user._id),
-  user: {
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role
-  }
-});
+      res.json({
+        token: generateToken(user), // ✅ Includes role now
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      });
     } else {
       res.status(401).json({ message: "Invalid email or password" });
     }

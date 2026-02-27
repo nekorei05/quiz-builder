@@ -14,66 +14,106 @@ import { useToast } from "@/hooks/useToast";
 export default function AttemptQuiz() {
   const { quizId } = useParams();
   const navigate = useNavigate();
-  const { quizzes, addAttempt } = useQuiz();
+  const { addAttempt } = useQuiz(); // ✅ only use addAttempt from context now
   const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
 
-  const quiz = quizzes.find((q) => String(q.id) === String(quizId));
+  // ✅ local state for fetched quiz + questions
+  const [quiz, setQuiz] = useState(null);
+  const [questions, setQuestions] = useState([]);
 
+  // UI state
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
 
+  // ✅ fetch full quiz (quiz + questions) from backend
   useEffect(() => {
-    if (!quiz) toastError("Quiz not found");
-  }, [quiz]);
+    const loadQuiz = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          toastError("No student token found. Please log in.");
+          return;
+        }
 
-  const score = quiz
-    ? quiz.questions.reduce((acc, q) => {
-        return acc + (answers[q.id] === (q.correctAnswer ?? q.answer) ? 1 : 0);
-      }, 0)
-    : 0;
+        const res = await fetch(`http://localhost:5000/api/quizzes/${quizId}`, {
+          headers: { Authorization: "Bearer " + token },
+        });
 
-  const totalQuestions = quiz?.questions.length ?? 0;
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to load quiz");
+        }
+
+        // data = { quiz, questions }
+        setQuiz(data.quiz);
+        setQuestions(Array.isArray(data.questions) ? data.questions : []);
+
+      } catch (err) {
+        console.error(err);
+        toastError(err.message || "Error loading quiz");
+      }
+    };
+
+    loadQuiz();
+  }, [quizId, toastError]);
+
+  // ✅ compute score against fetched questions using _id
+  const score = questions.reduce((acc, q) => {
+    const selected = answers[q._id]; // index selected by student
+    const correct = q.correctAnswer ?? q.answer; // support either field
+    return acc + (selected === correct ? 1 : 0);
+  }, 0);
+
+  const totalQuestions = questions.length;
+  const question = questions[current];
 
   const handleSubmit = useCallback(() => {
     if (!quiz || submitted) return;
     setSubmitted(true);
 
     const attemptId = `result-${Date.now()}`;
+
+    // store the attempt locally (optional; you can also POST to backend)
     addAttempt?.({
       id: attemptId,
-      quizId: quiz.id,
+      quizId: quiz._id,
       quizTitle: quiz.title,
       score,
       total: totalQuestions,
       completedAt: new Date().toISOString(),
       answers,
-
-      questions: quiz.questions,
+      questions, // store taken questions snapshot
     });
 
     toastSuccess(`Submitted! Score: ${score}/${totalQuestions}`);
     navigate(`/student/results/${attemptId}`, { replace: true });
-  }, [quiz, answers, submitted, score, totalQuestions, addAttempt, navigate]);
+  }, [quiz, submitted, addAttempt, score, totalQuestions, answers, questions, navigate, toastSuccess]);
 
+  // hooks
   const antiCheat = useAntiCheat(!submitted, handleSubmit, 2);
   const { timeLeft } = useTimer((quiz?.timeLimit ?? 10) * 60, handleSubmit, !submitted && !!quiz);
 
+  // Loading/empty states
   if (!quiz) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-muted-foreground">Quiz not found</p>
+        <p className="text-muted-foreground">Loading quiz…</p>
       </div>
     );
   }
 
-  const question = quiz.questions[current];
+  if (!question) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-muted-foreground">This quiz has no questions.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6">
       <AntiCheatWrapper antiCheat={antiCheat}>
-
-
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-lg font-bold text-foreground">{quiz.title}</h1>
@@ -108,14 +148,14 @@ export default function AttemptQuiz() {
 
         <ProgressBar value={Object.keys(answers).length} max={totalQuestions} className="mb-6" />
 
+        {/* ✅ use _id for selection mapping */}
         <QuestionCard
           question={question}
-          selectedAnswer={answers[question.id]}
-          onSelect={(idx) => setAnswers((prev) => ({ ...prev, [question.id]: idx }))}
+          selectedAnswer={answers[question._id]}
+          onSelect={(idx) => setAnswers((prev) => ({ ...prev, [question._id]: idx }))}
         />
 
-        <QuizNav questions={quiz.questions} answers={answers} current={current} onNavigate={setCurrent} />
-
+        <QuizNav questions={questions} answers={answers} current={current} onNavigate={setCurrent} />
 
         <div className="flex items-center justify-between mt-4">
           <button
@@ -144,7 +184,6 @@ export default function AttemptQuiz() {
             </button>
           )}
         </div>
-
       </AntiCheatWrapper>
     </div>
   );

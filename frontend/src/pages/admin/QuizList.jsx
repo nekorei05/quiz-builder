@@ -4,15 +4,7 @@ import { useQuiz } from "@/context/QuizContext";
 
 export default function QuizList() {
   const navigate = useNavigate();
-  const { quizzes } = useQuiz();
-
-  const handleCreate = () => {
-    navigate("/admin/create");
-  };
-
-  const handleEdit = (id) => {
-    navigate(`/admin/quizzes/edit/${id}`);
-  };
+  const { quizzes, loading } = useQuiz();
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -23,7 +15,7 @@ export default function QuizList() {
         </div>
 
         <button
-          onClick={handleCreate}
+          onClick={() => navigate("/admin/create")}
           className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl hover:bg-primary/90 transition font-medium"
         >
           <Plus className="w-4 h-4" />
@@ -31,7 +23,11 @@ export default function QuizList() {
         </button>
       </div>
 
-      {quizzes.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : quizzes.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground">
           <p className="text-lg font-medium">No quizzes yet</p>
           <p className="text-sm mt-1">Create your first quiz to get started</p>
@@ -40,9 +36,15 @@ export default function QuizList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {quizzes.map((quiz) => (
             <QuizCard
-              key={quiz.id}
-              quiz={quiz}
-              onEdit={() => handleEdit(quiz.id)}
+              key={quiz._id}
+              quiz={{
+                ...quiz,
+                id: quiz._id,
+                difficulty: quiz.difficultyLevel,
+                status: quiz.isPublished ? "published" : "draft",
+                questionCount: quiz.questionCount ?? 0,  // ✅ from backend aggregate, not questions.length
+              }}
+              onEdit={() => navigate(`/admin/quizzes/edit/${quiz._id}`)}
             />
           ))}
         </div>
@@ -54,46 +56,31 @@ export default function QuizList() {
 function QuizCard({ quiz, onEdit }) {
   const difficulty = quiz.difficulty || "easy";
 
-  let difficultyStyle = "bg-muted text-muted-foreground border-border";
+  const difficultyStyles = {
+    easy: "bg-primary/10 text-primary border-primary/20",
+    medium: "bg-warning/10 text-warning border-warning/20",
+    hard: "bg-destructive/10 text-destructive border-destructive/20",
+  };
 
-  if (difficulty === "easy") {
-    difficultyStyle = "bg-primary/10 text-primary border-primary/20";
-  } else if (difficulty === "medium") {
-    difficultyStyle = "bg-warning/10 text-warning border-warning/20";
-  } else if (difficulty === "hard") {
-    difficultyStyle = "bg-destructive/10 text-destructive border-destructive/20";
-  }
-
-  const statusStyle =
-    quiz.status === "published"
-      ? "bg-primary/10 text-primary border-primary/20"
-      : "bg-muted text-muted-foreground border-border";
-
-  const questionCount = quiz.questions ? quiz.questions.length : 0;
-  const timeLimit = quiz.timeLimit || 10;
+  const difficultyStyle = difficultyStyles[difficulty] || "bg-muted text-muted-foreground border-border";
+  const statusStyle = quiz.status === "published"
+    ? "bg-primary/10 text-primary border-primary/20"
+    : "bg-muted text-muted-foreground border-border";
 
   return (
     <div
       className="bg-card rounded-2xl p-6 flex flex-col gap-3"
-      style={{
-        border: "1px solid hsl(var(--border))",
-        boxShadow: "var(--shadow-sm)",
-      }}
+      style={{ border: "1px solid hsl(var(--border))", boxShadow: "var(--shadow-sm)" }}
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold text-foreground">{quiz.title}</h3>
 
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          <span
-            className={`text-[11px] px-2.5 py-0.5 rounded-full border font-medium ${difficultyStyle}`}
-          >
+          <span className={`text-[11px] px-2.5 py-0.5 rounded-full border font-medium ${difficultyStyle}`}>
             {difficulty}
           </span>
-
           {quiz.status && (
-            <span
-              className={`text-[11px] px-2.5 py-0.5 rounded-full border font-medium ${statusStyle}`}
-            >
+            <span className={`text-[11px] px-2.5 py-0.5 rounded-full border font-medium ${statusStyle}`}>
               {quiz.status}
             </span>
           )}
@@ -101,20 +88,17 @@ function QuizCard({ quiz, onEdit }) {
       </div>
 
       {quiz.description && (
-        <p className="text-sm text-muted-foreground line-clamp-2">
-          {quiz.description}
-        </p>
+        <p className="text-sm text-muted-foreground line-clamp-2">{quiz.description}</p>
       )}
 
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5" />
-          {timeLimit} min
+          {quiz.timeLimit ?? 10} min
         </span>
-
         <span className="flex items-center gap-1.5">
           <HelpCircle className="w-3.5 h-3.5" />
-          {questionCount} questions
+          {quiz.questionCount} questions   {/* ✅ from backend */}
         </span>
       </div>
 
