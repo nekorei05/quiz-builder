@@ -7,7 +7,7 @@ import QuizForm from "@/components/quiz/QuizForm";
 import QuestionEditor from "@/components/quiz/QuestionEditor";
 
 const EMPTY_QUESTION = {
-  questionText: "",       // ✅ matches backend field name
+  questionText: "",
   options: ["", "", "", ""],
   correctAnswer: 0,
 };
@@ -21,71 +21,58 @@ export default function CreateQuiz({ initialData = null, isEditing = false }) {
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [difficulty, setDifficulty] = useState(initialData?.difficultyLevel ?? "medium");
   const [timeLimit, setTimeLimit] = useState(initialData?.timeLimit ?? 15);
+  const [isPublished, setIsPublished] = useState(initialData?.isPublished ?? false); // ✅ default draft
+  const [questions, setQuestions] = useState(() =>
+    initialData?.questions?.length ? initialData.questions : [{ ...EMPTY_QUESTION }]
+  );
 
-  const [questions, setQuestions] = useState(() => {
-    if (initialData?.questions?.length) return initialData.questions;
-    return [{ ...EMPTY_QUESTION }];
-  });
-
-  const handleAddQuestion = () => {
+  const handleAddQuestion = () =>
     setQuestions((prev) => [...prev, { ...EMPTY_QUESTION }]);
-  };
 
-  const handleUpdateQuestion = (questionIndex, field, value) => {
-    setQuestions((prev) =>
-      prev.map((q, i) => (i !== questionIndex ? q : { ...q, [field]: value }))
-    );
-  };
+  const handleUpdateQuestion = (qi, field, value) =>
+    setQuestions((prev) => prev.map((q, i) => (i !== qi ? q : { ...q, [field]: value })));
 
-  const handleUpdateOption = (questionIndex, optionIndex, value) => {
+  const handleUpdateOption = (qi, oi, value) =>
     setQuestions((prev) =>
       prev.map((q, i) => {
-        if (i !== questionIndex) return q;
+        if (i !== qi) return q;
         const options = [...q.options];
-        options[optionIndex] = value;
+        options[oi] = value;
         return { ...q, options };
       })
     );
-  };
 
-  const handleRemoveQuestion = (questionIndex) => {
-    setQuestions((prev) => prev.filter((_, i) => i !== questionIndex));
-  };
+  const handleRemoveQuestion = (qi) =>
+    setQuestions((prev) => prev.filter((_, i) => i !== qi));
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      toastError("Quiz title is required");
-      return;
-    }
+    if (!title.trim()) return toastError("Quiz title is required");
+    if (questions.some((q) => !q.questionText?.trim()))
+      return toastError("All questions must have text");
 
-    const hasEmptyQuestion = questions.some((q) => !q.questionText?.trim());
-    if (hasEmptyQuestion) {
-      toastError("All questions must have text");
-      return;
-    }
-
-    // ✅ Field names match exactly what backend expects
     const quizData = {
       title: title.trim(),
       description: description.trim(),
-      difficultyLevel: difficulty,       // ✅ was: difficulty
+      difficultyLevel: difficulty,
       timeLimit,
       totalMarks: questions.length * 10,
+      isPublished,   // ✅ send to backend
       questions: questions.map((q) => ({
-        questionText: q.questionText,    // ✅ was: q.text
+        ...(q._id ? { _id: q._id } : {}),
+        questionText: q.questionText,
         options: q.options,
-        correctAnswer: q.correctAnswer,
-        difficulty: difficulty,
+        correctAnswer: Number(q.correctAnswer),
+        difficulty: q.difficulty || difficulty,
       })),
     };
 
     try {
       if (isEditing) {
         await updateQuiz(initialData._id || initialData.id, quizData);
-        toastSuccess("Quiz updated");
+        toastSuccess(isPublished ? "Quiz updated & published" : "Quiz saved as draft");
       } else {
         await createQuiz(quizData);
-        toastSuccess("Quiz created successfully!");
+        toastSuccess(isPublished ? "Quiz created & published!" : "Quiz saved as draft!");
       }
       navigate("/admin/quizzes");
     } catch (err) {
@@ -100,11 +87,8 @@ export default function CreateQuiz({ initialData = null, isEditing = false }) {
           <h1 className="text-3xl font-bold text-foreground">
             {isEditing ? "Edit Quiz" : "Create Quiz"}
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Add questions and configure quiz settings
-          </p>
+          <p className="text-muted-foreground mt-1">Add questions and configure quiz settings</p>
         </div>
-
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -115,24 +99,21 @@ export default function CreateQuiz({ initialData = null, isEditing = false }) {
       </div>
 
       <QuizForm
-        title={title}
-        setTitle={setTitle}
-        description={description}
-        setDescription={setDescription}
-        difficulty={difficulty}
-        setDifficulty={setDifficulty}
-        timeLimit={timeLimit}
-        setTimeLimit={setTimeLimit}
+        title={title} setTitle={setTitle}
+        description={description} setDescription={setDescription}
+        difficulty={difficulty} setDifficulty={setDifficulty}
+        timeLimit={timeLimit} setTimeLimit={setTimeLimit}
+        isPublished={isPublished} setIsPublished={setIsPublished}
       />
 
       <div className="mt-6 space-y-4">
         {questions.map((question, index) => (
           <QuestionEditor
-            key={index}
+            key={question._id || index}
             index={index}
             question={question}
             onUpdate={(field, value) => handleUpdateQuestion(index, field, value)}
-            onUpdateOption={(optionIndex, value) => handleUpdateOption(index, optionIndex, value)}
+            onUpdateOption={(oi, value) => handleUpdateOption(index, oi, value)}
             onRemove={() => handleRemoveQuestion(index)}
             canRemove={questions.length > 1}
           />
@@ -147,13 +128,12 @@ export default function CreateQuiz({ initialData = null, isEditing = false }) {
           <Plus className="w-4 h-4" />
           Add Question
         </button>
-
         <button
           onClick={handleSubmit}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           <Save className="w-4 h-4" />
-          {isEditing ? "Update Quiz" : "Create Quiz"}
+          {isEditing ? "Update Quiz" : "Save Quiz"}
         </button>
       </div>
     </div>

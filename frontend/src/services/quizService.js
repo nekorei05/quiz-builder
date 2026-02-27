@@ -1,5 +1,4 @@
 // services/quizService.js
-// All mock data removed — wired to real Express backend
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -19,7 +18,6 @@ async function handleResponse(res) {
 
 // ─── ADMIN ───────────────────────────────────────────────
 
-/** GET /api/quizzes/admin — Admin: fetch their own quizzes */
 export async function getMyQuizzes() {
   const res = await fetch(`${BASE_URL}/quizzes/admin`, {
     headers: getAuthHeaders(),
@@ -27,7 +25,7 @@ export async function getMyQuizzes() {
   return handleResponse(res);
 }
 
-/** POST /api/quizzes — Admin: create a quiz with questions */
+// CREATE QUIZ
 export async function createQuiz(data) {
   const res = await fetch(`${BASE_URL}/quizzes`, {
     method: "POST",
@@ -38,7 +36,9 @@ export async function createQuiz(data) {
       subject: data.subject || "General",
       difficultyLevel: data.difficultyLevel || data.difficulty,
       timeLimit: data.timeLimit,
-      totalMarks: data.totalMarks || data.questions.length * 10,
+      totalMarks: data.totalMarks ?? data.questions.length * 10,
+      isPublished: data.isPublished, // <-- included
+
       questions: data.questions.map((q) => ({
         questionText: q.questionText || q.text,
         options: q.options,
@@ -47,10 +47,11 @@ export async function createQuiz(data) {
       })),
     }),
   });
+
   return handleResponse(res);
 }
 
-/** PUT /api/quizzes/:id — Admin: update a quiz */
+// UPDATE QUIZ (ONLY ONE VERSION)
 export async function updateQuiz(id, data) {
   const res = await fetch(`${BASE_URL}/quizzes/${id}`, {
     method: "PUT",
@@ -61,13 +62,15 @@ export async function updateQuiz(id, data) {
       subject: data.subject || "General",
       difficultyLevel: data.difficultyLevel || data.difficulty,
       timeLimit: data.timeLimit,
-      totalMarks: data.questions.length * 10,
+      totalMarks: data.totalMarks ?? data.questions.length * 10,
+      isPublished: data.isPublished, // <-- CRITICAL FIX
+
       questions: data.questions.map((q) => ({
+        ...(q._id ? { _id: q._id } : {}),
         questionText: q.questionText || q.text,
         options: q.options,
         correctAnswer: q.correctAnswer,
-        difficulty:
-          q.difficulty || data.difficultyLevel || data.difficulty,
+        difficulty: q.difficulty || data.difficultyLevel || data.difficulty,
       })),
     }),
   });
@@ -75,7 +78,7 @@ export async function updateQuiz(id, data) {
   return handleResponse(res);
 }
 
-/** DELETE /api/quizzes/:id — Admin: delete a quiz */
+// DELETE QUIZ
 export async function deleteQuiz(id) {
   const res = await fetch(`${BASE_URL}/quizzes/${id}`, {
     method: "DELETE",
@@ -86,13 +89,12 @@ export async function deleteQuiz(id) {
 
 // ─── STUDENT ──────────────────────────────────────────────
 
-/** GET /api/quizzes — Student: fetch all published quizzes */
 export async function getAvailableQuizzes() {
   const res = await fetch(`${BASE_URL}/quizzes`, {
     headers: getAuthHeaders(),
   });
   const data = await handleResponse(res);
-  // Normalize _id → id and map field names to match frontend expectations
+
   return data.map((q) => ({
     ...q,
     id: q._id,
@@ -101,25 +103,22 @@ export async function getAvailableQuizzes() {
   }));
 }
 
-/** GET /api/quizzes/:id — Student: fetch a single quiz with its questions */
 export async function getQuizById(id) {
   const res = await fetch(`${BASE_URL}/quizzes/${id}`, {
     headers: getAuthHeaders(),
   });
-  return handleResponse(res); // returns { quiz, questions }
+  return handleResponse(res);
 }
 
-/** POST /api/quizzes/:id/submit — Student: submit answers and get score */
 export async function submitQuiz(quizId, answers) {
   const res = await fetch(`${BASE_URL}/quizzes/${quizId}/submit`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ answers }),
   });
-  return handleResponse(res); // returns { score, total, percentage, resultId }
+  return handleResponse(res);
 }
 
-/** GET /api/quizzes/:id/result — Student: fetch a stored result */
 export async function getQuizResult(quizId) {
   const res = await fetch(`${BASE_URL}/quizzes/${quizId}/result`, {
     headers: getAuthHeaders(),
@@ -127,7 +126,6 @@ export async function getQuizResult(quizId) {
   return handleResponse(res);
 }
 
-/** GET /api/quizzes/history — Student: fetch attempt history */
 export async function getQuizHistory() {
   const res = await fetch(`${BASE_URL}/quizzes/history`, {
     headers: getAuthHeaders(),
@@ -135,7 +133,6 @@ export async function getQuizHistory() {
   return handleResponse(res);
 }
 
-// ─── NAMED EXPORT (for components using quizService.method()) ──
 export const quizService = {
   getMyQuizzes,
   createQuiz,

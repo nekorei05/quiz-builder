@@ -63,12 +63,12 @@ export function QuizProvider({ children }) {
   };
 
   const updateQuiz = async (id, quizData) => {
-    const updated = await apiUpdateQuiz(id, quizData);
-    setQuizzes((prev) =>
-      prev.map((q) => (String(q._id || q.id) === String(id) ? { ...q, ...updated } : q))
-    );
-    return updated;
-  };
+  const response = await apiUpdateQuiz(id, quizData);
+  const updatedQuiz = response.quiz || response; // ✅ extract the quiz object
+  const updated = await getMyQuizzes();          // ✅ re-fetch so list is always fresh from DB
+  setQuizzes(updated);
+  return updatedQuiz;
+};
 
   const deleteQuiz = async (id) => {
     await apiDeleteQuiz(id);

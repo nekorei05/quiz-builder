@@ -1,13 +1,12 @@
-// controllers/quizController.js — COMPLETE UPDATED VERSION
 const Quiz = require("../models/Quiz");
 const Question = require("../models/Question");
 const Result = require("../models/Result");
 
-// ── EXISTING (unchanged) ───────────────────────────────────────
+// ── CREATE ─────────────────────────────────────────────────────
 
 exports.createQuiz = async (req, res) => {
   try {
-    const { title, description, subject, difficultyLevel, timeLimit, totalMarks, questions } = req.body;
+    const { title, description, subject, difficultyLevel, timeLimit, totalMarks, questions, isPublished } = req.body;
 
     if (!questions || questions.length === 0) {
       return res.status(400).json({ message: "Quiz must contain at least one question" });
@@ -16,18 +15,18 @@ exports.createQuiz = async (req, res) => {
     const quiz = await Quiz.create({
       title, description, subject, difficultyLevel, timeLimit, totalMarks,
       createdBy: req.user._id,
-      isPublished: true,
+      isPublished: isPublished ?? false,  // use frontend value, default draft
     });
 
-    const formattedQuestions = questions.map((q) => ({
+    const formatted = questions.map((q) => ({
       quizId: quiz._id,
       questionText: q.questionText,
       options: q.options,
-      correctAnswer: q.correctAnswer,
-      difficulty: q.difficulty,
+      correctAnswer: Number(q.correctAnswer),
+      difficulty: q.difficulty || difficultyLevel,
     }));
 
-    await Question.insertMany(formattedQuestions);
+    await Question.insertMany(formatted);
 
     return res.status(201).json({ message: "Quiz created successfully", quizId: quiz._id });
   } catch (error) {
@@ -35,6 +34,8 @@ exports.createQuiz = async (req, res) => {
     return res.status(500).json({ message: "Server error while creating quiz" });
   }
 };
+
+// ── READ ───────────────────────────────────────────────────────
 
 exports.getPublishedQuizzes = async (req, res) => {
   try {
@@ -62,6 +63,16 @@ exports.getMyQuizzes = async (req, res) => {
       .select("-__v")
       .sort({ createdAt: -1 })
       .lean();
+
+    // Attach question counts for admin list
+    const quizIds = quizzes.map((q) => q._id);
+    const counts = await Question.aggregate([
+      { $match: { quizId: { $in: quizIds } } },
+      { $group: { _id: "$quizId", count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(counts.map((c) => [String(c._id), c.count]));
+    for (const q of quizzes) q.questionCount = countMap.get(String(q._id)) || 0;
+
     return res.json(quizzes);
   } catch (error) {
     console.error(error);
@@ -74,9 +85,10 @@ exports.getQuizById = async (req, res) => {
     const quiz = await Quiz.findById(req.params.id).lean();
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-   const questions = await Question.find({ quizId: req.params.id })
-  .select(req.user.role === "admin" ? "" : "-correctAnswer")  // ✅ admin sees all
-  .lean();
+    // Admin sees correctAnswer, student doesn't
+    const questions = await Question.find({ quizId: req.params.id })
+      .select(req.user.role === "admin" ? "" : "-correctAnswer")
+      .lean();
 
     return res.json({ quiz, questions });
   } catch (error) {
@@ -85,61 +97,81 @@ exports.getQuizById = async (req, res) => {
   }
 };
 
-// ── NEW FUNCTIONS ──────────────────────────────────────────────
+// ── UPDATE ─────────────────────────────────────────────────────
 
 /*
-@desc    Admin: update a quiz (metadata only, not questions)
-@route   PUT /api/quizzes/:id
-@access  Admin only
+@desc  Admin: update quiz metadata + smart question sync
+       - existing questions (have _id) → update in place
+       - new questions (no _id) → insert
+       - questions removed in frontend → delete from DB
+@route PUT /api/quizzes/:id
 */
 exports.updateQuiz = async (req, res) => {
   try {
-    const { title, description, subject, difficultyLevel, timeLimit, totalMarks, questions } = req.body;
+    const { questions, ...metaFields } = req.body;
 
-    const quiz = await Quiz.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id,
+    // Verify ownership
+    const quiz = await Quiz.findOne({ _id: req.params.id, createdBy: req.user._id });
+    if (!quiz) return res.status(404).json({ message: "Quiz not found or not authorized" });
+
+    // 1. Update metadata
+    const allowedFields = ["title", "description", "subject", "difficultyLevel", "timeLimit", "totalMarks", "isPublished"];
+    allowedFields.forEach((field) => {
+      if (metaFields[field] !== undefined) quiz[field] = metaFields[field];
     });
-
-    if (!quiz) {
-      return res.status(404).json({ message: "Quiz not found or not authorized" });
-    }
-
-    // ─── Update quiz metadata ───
-    quiz.title = title;
-    quiz.description = description;
-    quiz.subject = subject;
-    quiz.difficultyLevel = difficultyLevel;
-    quiz.timeLimit = timeLimit;
-    quiz.totalMarks = totalMarks;
-
     await quiz.save();
 
-    // ─── Replace all questions ───
-    await Question.deleteMany({ quizId: quiz._id });
+    // 2. Sync questions if provided
+    if (Array.isArray(questions)) {
+      // IDs that still exist in the updated list
+      const incomingIds = questions
+        .filter((q) => q._id)
+        .map((q) => String(q._id));
 
-    const formattedQuestions = questions.map((q) => ({
-      quizId: quiz._id,
-      questionText: q.questionText,
-      options: q.options,
-      correctAnswer: q.correctAnswer,
-      difficulty: q.difficulty,
-    }));
+      // Delete questions that were removed in the frontend
+      await Question.deleteMany({
+        quizId: quiz._id,
+        _id: { $nin: incomingIds },
+      });
 
-    await Question.insertMany(formattedQuestions);
+      // Process each question
+      for (const q of questions) {
+        const data = {
+          questionText: q.questionText,
+          options: q.options,
+          correctAnswer: Number(q.correctAnswer),
+          difficulty: q.difficulty || quiz.difficultyLevel,
+        };
 
-    return res.json({ message: "Quiz fully updated successfully" });
+        if (q._id) {
+          // Existing question → update it
+          await Question.findByIdAndUpdate(q._id, data);
+        } else {
+          // New question → insert it
+          await Question.create({ quizId: quiz._id, ...data });
+        }
+      }
+    }
 
+    // 3. Return fresh data
+    const updatedQuestions = await Question.find({ quizId: quiz._id }).lean();
+
+    return res.json({
+      message: "Quiz updated successfully",
+      quiz,
+      questions: updatedQuestions,
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Error updating quiz" });
   }
 };
 
+// ── DELETE ─────────────────────────────────────────────────────
+
 /*
-@desc    Admin: delete a quiz and its questions
-@route   DELETE /api/quizzes/:id
-@access  Admin only
+@desc  Admin: delete entire quiz + all its questions + results
+@route DELETE /api/quizzes/:id
 */
 exports.deleteQuiz = async (req, res) => {
   try {
@@ -147,6 +179,7 @@ exports.deleteQuiz = async (req, res) => {
     if (!quiz) return res.status(404).json({ message: "Quiz not found or not authorized" });
 
     await Question.deleteMany({ quizId: quiz._id });
+    await Result.deleteMany({ quizId: quiz._id });
     await quiz.deleteOne();
 
     return res.json({ message: "Quiz deleted successfully" });
@@ -156,14 +189,11 @@ exports.deleteQuiz = async (req, res) => {
   }
 };
 
-/*
-@desc    Student: submit answers and receive score
-@route   POST /api/quizzes/:id/submit
-@access  Student only
-*/
+// ── SUBMIT ─────────────────────────────────────────────────────
+
 exports.submitQuiz = async (req, res) => {
   try {
-    const { answers } = req.body; // array of { questionId, selectedAnswer (index) }
+    const { answers } = req.body;
 
     const quiz = await Quiz.findById(req.params.id);
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
@@ -173,7 +203,7 @@ exports.submitQuiz = async (req, res) => {
     let score = 0;
     const breakdown = questions.map((q, i) => {
       const selected = answers[i]?.selectedAnswer ?? answers[i];
-      const isCorrect = q.correctAnswer === selected;
+      const isCorrect = Number(q.correctAnswer) === Number(selected);
       if (isCorrect) score++;
       return {
         questionId: q._id,
@@ -187,7 +217,6 @@ exports.submitQuiz = async (req, res) => {
     const total = questions.length;
     const percentage = Math.round((score / total) * 100);
 
-    // Save result to DB
     const result = await Result.create({
       quizId: quiz._id,
       userId: req.user._id,
@@ -204,11 +233,8 @@ exports.submitQuiz = async (req, res) => {
   }
 };
 
-/*
-@desc    Student: get their attempt history
-@route   GET /api/quizzes/history
-@access  Student only
-*/
+// ── HISTORY ────────────────────────────────────────────────────
+
 exports.getQuizHistory = async (req, res) => {
   try {
     const results = await Result.find({ userId: req.user._id })
