@@ -1,6 +1,7 @@
 const Quiz = require("../models/Quiz");
 const Question = require("../models/Question");
 const Result = require("../models/Result");
+const parseFile = require("../utils/parseFile");
 
 // ── CREATE ─────────────────────────────────────────────────────
 
@@ -246,5 +247,45 @@ exports.getQuizHistory = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Error fetching history" });
+  }
+};
+
+// ── AI GENERATE ─────────────────────────────────────────────
+
+exports.aiGenerateQuiz = async (req, res) => {
+  try {
+    const { numberOfQuestions } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ message: "File is required" });
+    }
+
+    if (!numberOfQuestions || Number(numberOfQuestions) <= 0) {
+      return res.status(400).json({
+        message: "Valid numberOfQuestions is required",
+      });
+    }
+
+    // 1️⃣ Extract text from uploaded file
+    const extractedText = await parseFile(req.file);
+
+    if (!extractedText || extractedText.trim().length < 20) {
+      return res.status(400).json({
+        message: "File content too small or empty",
+      });
+    }
+
+    // 2️⃣ For now: return preview only (AI integration next step)
+    return res.json({
+      message: "File parsed successfully",
+      preview: extractedText.substring(0, 500),
+      numberOfQuestions: Number(numberOfQuestions),
+    });
+
+  } catch (error) {
+    console.error("AI Generate Error:", error);
+    return res.status(500).json({
+      message: "Error generating quiz from file",
+    });
   }
 };

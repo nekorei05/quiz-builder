@@ -1,5 +1,11 @@
 const express = require('express');
 const router = express.Router();
+
+// ai generate
+const upload = require("../middleware/uploadMiddleware");
+const { aiGenerateQuiz } = require("../controllers/quizController");
+
+
 const {
   createQuiz,
   getPublishedQuizzes,
@@ -23,8 +29,12 @@ router.get('/history', protect, authorize('student'), getQuizHistory);
 router.get('/', protect, authorize('student'), getPublishedQuizzes);
 router.post('/:id/submit', protect, authorize('student'), submitQuiz);
 
+// ── AI GENERATE ───────────────────────────
+router.post("/ai-generate",protect, authorize("admin"), upload.single("file"), aiGenerateQuiz);
+
 // ── SHARED (admin + student) ───────────────────────────
 // Admin needs this to prefill EditQuiz, student needs it to attempt quiz
 router.get('/:id', protect, authorize('admin', 'student'), getQuizById);  // ✅ was student-only
+
 
 module.exports = router;
