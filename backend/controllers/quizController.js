@@ -2,6 +2,8 @@ const Quiz = require("../models/Quiz");
 const Question = require("../models/Question");
 const Result = require("../models/Result");
 const parseFile = require("../utils/parseFile");
+const { generateQuizFromText } = require("../services/aiService");
+
 
 // ── CREATE ─────────────────────────────────────────────────────
 
@@ -260,32 +262,35 @@ exports.aiGenerateQuiz = async (req, res) => {
       return res.status(400).json({ message: "File is required" });
     }
 
-    if (!numberOfQuestions || Number(numberOfQuestions) <= 0) {
-      return res.status(400).json({
-        message: "Valid numberOfQuestions is required",
-      });
-    }
-
-    // 1️⃣ Extract text from uploaded file
+    // 1️⃣ Extract text from uploaded file (THIS PART WORKS!)
     const extractedText = await parseFile(req.file);
 
     if (!extractedText || extractedText.trim().length < 20) {
-      return res.status(400).json({
-        message: "File content too small or empty",
-      });
+      return res.status(400).json({ message: "File content too small" });
     }
 
-    // 2️⃣ For now: return preview only (AI integration next step)
+    // 2️⃣ ACTIVATE GEMINI (The part you were missing)
+    // This calls your generateQuizFromText function in aiService.js
+    const aiRawResponse = await generateQuizFromText(extractedText, numberOfQuestions || 5);
+
+    // 3️⃣ Parse the AI string into JSON
+    // We strip markdown backticks just in case
+    const cleanJson = aiRawResponse.replace(/```json|```/g, "").trim();
+    const quizData = JSON.parse(cleanJson);
+
+    // 4️⃣ Return the ACTUAL questions
     return res.json({
-      message: "File parsed successfully",
-      preview: extractedText.substring(0, 500),
-      numberOfQuestions: Number(numberOfQuestions),
+      message: "Quiz generated successfully",
+      ...quizData 
     });
 
   } catch (error) {
     console.error("AI Generate Error:", error);
-    return res.status(500).json({
-      message: "Error generating quiz from file",
-    });
+    
+    // Handle Gemini 429 (Rate Limit) specifically
+    const status = error.message.includes("429") ? 429 : 500;
+    const msg = status === 429 ? "AI is busy (Free Tier limit). Wait 60s." : "Error generating quiz";
+    
+    return res.status(status).json({ message: msg });
   }
 };

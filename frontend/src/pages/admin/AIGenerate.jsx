@@ -148,65 +148,69 @@ export default function AIGenerate() {
   const [preview, setPreview] = useState(false);
   const [drag, setDrag] = useState(false);
 
-  function readFile(f) {
+    function readFile(f) {
     if (!f) return;
-
     if (f.size > MAX_FILE_SIZE) {
-      toast.error("File too large");
+      toast.error("File too large (Max 5MB)");
       return;
     }
-
-    if (!/\.(txt|pdf|doc|docx)$/i.test(f.name)) {
-      toast.error("Unsupported file type");
-      return;
-    }
-
     setFile(f);
-
     if (f.type === "application/pdf") {
-      setText(`[PDF loaded: ${f.name}]`);
-      toast.success("File loaded");
-      return;
+      setText(`[PDF Ready: ${f.name}]`);
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => setText(reader.result);
+      reader.readAsText(f);
     }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      setText(reader.result || "");
-      toast.success("File loaded");
-    };
-
-    reader.onerror = () => {
-      toast.error("Failed to read file");
-    };
-
-    reader.readAsText(f);
+    toast.success("File attached");
   }
 
-  function handleGenerate() {
-    if (!text.trim()) {
-      toast.error("Enter source material");
+
+    async function handleGenerate() {
+    if (!text.trim() && !file) {
+      toast.error("Enter source material or upload a file");
       return;
     }
 
     setLoading(true);
 
-    generateQuestions({
-      topic: text.slice(0, 200),
-      count,
-    })
-      .then((res) => {
-        if (!res?.success) return;
-        setQuestions(res.questions);
-        toast.success("Questions generated");
-      })
-      .catch(() => {
-        toast.error("Failed to generate");
-      })
-      .finally(() => {
-        setLoading(false);
+    const formData = new FormData();
+    if (file) {
+      formData.append("file", file);
+    } else {
+      const blob = new Blob([text], { type: 'text/plain' });
+      formData.append("file", blob, "input.txt");
+    }
+    formData.append("numberOfQuestions", count);
+
+    try {
+      const response = await fetch("http://localhost:5000/api/quizzes/ai-generate", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: formData,
       });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Generation failed");
+
+      const formattedQuestions = data.questions.map(q => ({
+        text: q.questionText,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        difficulty: q.difficulty || "medium"
+      }));
+
+      setQuestions(formattedQuestions);
+      toast.success("Questions generated!");
+    } catch (err) {
+      toast.error(err.message || "Failed to generate");
+    } finally {
+      setLoading(false);
+    }
   }
+
 
   function updateQuestion(index, field, value) {
     const list = [...questions];
@@ -239,22 +243,34 @@ export default function AIGenerate() {
     ]);
   }
 
-  function saveQuiz() {
+    async function saveQuiz() {
     if (!questions.length) return;
 
-    createQuiz({
-      title,
-      description: "Generated quiz",
-      subject: "General",
-      difficulty: "medium",
-      timeLimit: time,
-      status: "published",
-      questions,
-    });
+    const finalQuestions = questions.map(q => ({
+      questionText: q.text,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      difficulty: q.difficulty
+    }));
 
-    toast.success("Quiz created");
-    navigate("/admin/quizzes");
+    try {
+      await createQuiz({
+        title,
+        description: "Generated from AI",
+        subject: "General",
+        difficultyLevel: "medium",
+        timeLimit: time,
+        isPublished: true,
+        questions: finalQuestions,
+      });
+
+      toast.success("Quiz saved successfully!");
+      navigate("/admin");
+    } catch (error) {
+      toast.error("Failed to save quiz");
+    }
   }
+
 
   function handleDrop(e) {
     e.preventDefault();
