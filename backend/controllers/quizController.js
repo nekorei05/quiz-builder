@@ -205,14 +205,16 @@ exports.submitQuiz = async (req, res) => {
 
     let score = 0;
     const breakdown = questions.map((q, i) => {
-      const selected = answers[i]?.selectedAnswer ?? answers[i];
-      const isCorrect = Number(q.correctAnswer) === Number(selected);
+      const selected = answers[i] !== undefined ? Number(answers[i]) : null;
+      const isCorrect = selected !== null && Number(q.correctAnswer) === selected;
       if (isCorrect) score++;
+
       return {
         questionId: q._id,
-        questionText: q.questionText,
-        selected,
-        correctAnswer: q.correctAnswer,
+        questionText: q.questionText,   // ✅ included so frontend doesn't need questions array
+        options: q.options,             // ✅ included so frontend can show answer text
+        selected,                       // the index student picked
+        correctAnswer: q.correctAnswer, // ✅ always included in breakdown (not stripped)
         isCorrect,
       };
     });

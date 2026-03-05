@@ -55,8 +55,8 @@ export default function AppRouter() {
           <Route index element={<StudentDashboard />} />
           <Route path="quizzes" element={<AvailableQuizzes />} />
           <Route path="quizzes/:quizId" element={<AttemptQuiz />} />
-          <Route path="results" element={<QuizResult />} />
-          <Route path="results/:attemptId" element={<QuizResult />} />
+        <Route path="results/:attemptId" element={<QuizResult />} />
+<Route path="results" element={<QuizResult />} />
           <Route path="analytics" element={<History />} />
         </Route>
 

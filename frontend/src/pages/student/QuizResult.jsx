@@ -1,89 +1,67 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Lightbulb } from "lucide-react";
-import { useQuiz } from "@/context/QuizContext";
-import { useAuth } from "@/context/AuthContext";
+import { CheckCircle, XCircle, RotateCcw, Home, Lightbulb } from "lucide-react";
 import { explainAnswer } from "@/services/aiService";
-import EmptyState from "@/components/ui/EmptyState";
 
-
-function QuestionRow({ question, index, userAnswerIdx }) {
+function QuestionRow({ item, index }) {
   const [showExplanation, setShowExplanation] = useState(false);
   const [explanation, setExplanation] = useState("");
   const [loadingExplanation, setLoadingExplanation] = useState(false);
 
-  const correctIdx = question.correctAnswer ?? question.answer ?? -1;
-  const isCorrect = userAnswerIdx === correctIdx;
+  const { questionText, options = [], selected, correctAnswer, isCorrect } = item;
 
   const userAnswerText =
-    userAnswerIdx !== undefined && userAnswerIdx !== null
-      ? question.options?.[userAnswerIdx] ?? "—"
+    selected !== null && selected !== undefined
+      ? options[selected] ?? `Option ${selected + 1}`
       : "Not answered";
 
-  const correctAnswerText = question.options?.[correctIdx] ?? "—";
+  const correctAnswerText = options[correctAnswer] ?? `Option ${correctAnswer + 1}`;
 
-  const handleToggleExplanation = async () => {
+  async function handleExplain() {
     if (showExplanation) { setShowExplanation(false); return; }
     setShowExplanation(true);
-    if (explanation) return; 
+    if (explanation) return;
     setLoadingExplanation(true);
     try {
-      const res = await explainAnswer({ question: question.text, correctAnswer: correctAnswerText });
+      const res = await explainAnswer({ question: questionText, correctAnswer: correctAnswerText });
       setExplanation(res.explanation || "No explanation available.");
     } catch {
       setExplanation("Could not load explanation.");
     } finally {
       setLoadingExplanation(false);
     }
-  };
+  }
 
   return (
     <div
-      className={`rounded-2xl p-5 space-y-2 ${
-        isCorrect ? "bg-success/5" : "bg-destructive/5"
-      }`}
-      style={{
-        border: `1px solid ${isCorrect ? "hsl(var(--success) / 0.2)" : "hsl(var(--destructive) / 0.2)"}`,
-      }}
+      className={`rounded-2xl p-5 space-y-2 ${isCorrect ? "bg-success/5" : "bg-destructive/5"}`}
+      style={{ border: `1px solid ${isCorrect ? "hsl(var(--success) / 0.2)" : "hsl(var(--destructive) / 0.2)"}` }}
     >
-
-      <p className="text-sm font-semibold text-foreground">
-        Q{index + 1}: {question.text}
-      </p>
-
-
-      <p className="text-xs text-muted-foreground">
+      <div className="flex items-start gap-2">
+        {isCorrect
+          ? <CheckCircle className="w-4 h-4 text-success shrink-0 mt-0.5" />
+          : <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />}
+        <p className="text-sm font-semibold text-foreground">Q{index + 1}: {questionText}</p>
+      </div>
+      <p className="text-xs text-muted-foreground pl-6">
         Your answer:{" "}
         <span className={isCorrect ? "text-success font-medium" : "text-destructive font-medium"}>
           {userAnswerText}
         </span>
         {!isCorrect && (
-          <>
-            {" · "}Correct:{" "}
-            <span className="text-foreground font-medium">{correctAnswerText}</span>
-          </>
+          <> · Correct: <span className="text-foreground font-medium">{correctAnswerText}</span></>
         )}
       </p>
-
-
       <button
-        onClick={handleToggleExplanation}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+        onClick={handleExplain}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors pl-6"
       >
         <Lightbulb className="w-3.5 h-3.5" />
-        {showExplanation ? "Hide AI Explanation" : "Show AI Explanation"}
+        {showExplanation ? "Hide Explanation" : "Show AI Explanation"}
       </button>
-
       {showExplanation && (
-        <div className="mt-2 px-3 py-2.5 rounded-xl bg-warning/5 border border-warning/20 text-xs text-muted-foreground leading-relaxed">
-          {loadingExplanation ? (
-            "Loading explanation..."
-          ) : (
-            <>
-              <span className="mr-1">💡</span>
-              {explanation}
-            </>
-          )}
+        <div className="mt-2 mx-6 px-3 py-2.5 rounded-xl bg-warning/5 border border-warning/20 text-xs text-muted-foreground leading-relaxed">
+          {loadingExplanation ? "Loading..." : <><span className="mr-1">💡</span>{explanation}</>}
         </div>
       )}
     </div>
@@ -93,174 +71,126 @@ function QuestionRow({ question, index, userAnswerIdx }) {
 export default function QuizResult() {
   const { attemptId } = useParams();
   const navigate = useNavigate();
-  const { attempts, quizzes } = useQuiz();
-  const { user } = useAuth();
 
+  const [result, setResult] = useState(null);
+  const [quiz, setQuiz] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (attemptId) {
-    const attempt = attempts.find((a) => String(a.id) === String(attemptId));
+  // ✅ Always fetch from backend — don't rely on location.state at all
+  useEffect(() => {
+      console.log("QuizResult useEffect, attemptId:", attemptId);  // add this
 
-    if (!attempt) {
-      return (
-        <div className="p-8 max-w-2xl mx-auto">
-          <EmptyState title="Result not found" description="This attempt could not be found." />
-          <button
-            onClick={() => navigate("/student/results")}
-            className="mt-4 text-sm text-primary hover:underline"
-          >
-            ← Back to results
-          </button>
-        </div>
-      );
+    if (!attemptId) {
+      setError("No result ID found");
+      setLoading(false);
+      return;
     }
 
-    const totalQuestions = attempt.total ?? attempt.questions?.length ?? 0;
-    const score = attempt.score ?? 0;
-    const pct = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+    const load = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`http://localhost:5000/api/results/${attemptId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        //temp console log
+        console.log("FETCH STATUS:", res.status);
 
-    const colorClass =
-      pct >= 70 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive";
+        const data = await res.json();
+
+        console.log("FETCH DATA:", data);  // add this
 
 
-    const questions =
-      attempt.questions ||
-      quizzes.find((q) => String(q.id) === String(attempt.quizId))?.questions ||
-      [];
+        if (!res.ok) throw new Error(data.message || "Failed to fetch result");
 
+        //temp consolelog
+        console.log("SETTING RESULT:", data.result);
+
+        setResult(data.result);
+        setQuiz(data.quiz);
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+
+        console.log("DONE LOADING");  // add this
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [attemptId]);
+
+  if (loading) {
     return (
-      <div className="max-w-2xl mx-auto py-10 px-4">
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+console.log("RENDER STATE - result:", result, "loading:", loading, "error:", error);
 
-
-        <div
-          className="bg-card rounded-2xl p-8 text-center mb-6"
-          style={{ border: "1px solid hsl(var(--border))", boxShadow: "var(--shadow-sm)" }}
-        >
-          <div className={`text-6xl font-bold mb-2 ${colorClass}`}>{pct}%</div>
-          <p className="text-lg font-semibold text-foreground mb-1">
-            {attempt.quizTitle ||
-              quizzes.find((q) => String(q.id) === String(attempt.quizId))?.title ||
-              "Quiz"}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            You scored {score} out of {totalQuestions} questions
-          </p>
-        </div>
-
-
-        <div className="space-y-3 mb-6">
-          {questions.map((q, i) => (
-            <QuestionRow
-              key={q.id ?? i}
-              question={q}
-              index={i}
-              userAnswerIdx={attempt.answers?.[q.id]}
-            />
-          ))}
-        </div>
-
- 
-        <button
-          onClick={() => navigate("/student")}
-          className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-medium text-sm hover:bg-primary/90 transition"
-        >
-          Back to Dashboard
+  if (error || !result) {
+    return (
+      <div className="p-8 max-w-2xl mx-auto text-center">
+        <p className="text-muted-foreground">{error || "Result not found."}</p>
+        <button onClick={() => navigate("/student")}
+          className="mt-4 text-sm text-primary hover:underline">
+          ← Back to Dashboard
         </button>
-
       </div>
     );
   }
 
-
-  const userAttempts = attempts.filter((a) =>
-    user?.id ? String(a.userId) === String(user.id) : true
-  );
-
-  if (userAttempts.length === 0) {
-    return (
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">My Results</h1>
-          <p className="text-muted-foreground mt-1">Review your quiz attempt history</p>
-        </div>
-        <EmptyState title="No attempts yet" description="Take a quiz to see your results here" />
-      </div>
-    );
-  }
+  const pct = result.percentage ?? Math.round((result.score / result.total) * 100);
+  const colorClass = pct >= 70 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive";
+  const bgClass = pct >= 70 ? "bg-success/10" : pct >= 50 ? "bg-warning/10" : "bg-destructive/10";
+  const breakdown = result.breakdown || [];
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">My Results</h1>
-        <p className="text-muted-foreground mt-1">Review your quiz attempt history</p>
-      </div>
-
+    <div className="max-w-2xl mx-auto py-10 px-4">
       <div
-        className="bg-card rounded-2xl overflow-hidden"
+        className="bg-card rounded-2xl p-8 text-center mb-6"
         style={{ border: "1px solid hsl(var(--border))", boxShadow: "var(--shadow-sm)" }}
       >
-        {userAttempts.map((attempt, i) => {
-          const total = attempt.total ?? 0;
-          const score = attempt.score ?? 0;
-          const pct = total > 0 ? Math.round((score / total) * 100) : 0;
-          const passed = pct >= 70;
-          const title =
-            attempt.quizTitle ||
-            quizzes.find((q) => String(q.id) === String(attempt.quizId))?.title ||
-            "Untitled Quiz";
-          const date = attempt.completedAt
-            ? new Date(attempt.completedAt).toLocaleDateString("en-CA")
-            : "—";
-          const timeInMinutes = attempt.timeTaken
-            ? Math.round(attempt.timeTaken / 60)
-            : null;
+        <div className={`w-24 h-24 rounded-full ${bgClass} flex items-center justify-center mx-auto mb-4`}>
+          <span className={`text-3xl font-bold ${colorClass}`}>{pct}%</span>
+        </div>
+        <p className="text-xl font-bold text-foreground mb-1">{quiz?.title || "Quiz"}</p>
+        <p className="text-sm text-muted-foreground">
+          You scored <span className="font-semibold text-foreground">{result.score}</span> out of{" "}
+          <span className="font-semibold text-foreground">{result.total}</span> questions
+        </p>
+        <p className={`text-sm font-semibold mt-2 ${colorClass}`}>
+          {pct >= 70 ? "🎉 Great job!" : pct >= 50 ? "👍 Not bad!" : "📚 Keep practicing!"}
+        </p>
+      </div>
 
-          return (
-            <button
-              key={attempt.id}
-              onClick={() => navigate(`/student/results/${attempt.id}`)}
-              className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-muted/30 transition-colors"
-              style={i < userAttempts.length - 1 ? { borderBottom: "1px solid hsl(var(--border))" } : {}}
-            >
+      {breakdown.length > 0 && (
+        <div className="space-y-3 mb-6">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            Question Breakdown
+          </h2>
+          {breakdown.map((item, i) => (
+            <QuestionRow key={i} item={item} index={i} />
+          ))}
+        </div>
+      )}
 
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                  passed ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                }`}
-              >
-                {passed ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
-              </div>
-
-
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{date}</p>
-              </div>
-
-
-              <div className="flex items-center gap-3 shrink-0">
-                {timeInMinutes !== null && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <circle cx="12" cy="12" r="10" /><path strokeLinecap="round" d="M12 6v6l4 2" />
-                    </svg>
-                    {timeInMinutes}m
-                  </span>
-                )}
-                <span className={`text-sm font-semibold ${passed ? "text-success" : "text-destructive"}`}>
-                  {score}/{total} ({pct}%)
-                </span>
-              </div>
-            </button>
-          );
-        })}
+      <div className="flex gap-3">
+        <button
+          onClick={() => navigate(`/student/quizzes/${quiz?._id}`)}
+          className="flex-1 flex items-center justify-center gap-2 border py-3 rounded-xl text-sm font-medium hover:bg-muted transition"
+          style={{ borderColor: "hsl(var(--border))" }}
+        >
+          <RotateCcw className="w-4 h-4" /> Retry Quiz
+        </button>
+        <button
+          onClick={() => navigate("/student")}
+          className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl text-sm font-medium hover:bg-primary/90 transition"
+        >
+          <Home className="w-4 h-4" /> Dashboard
+        </button>
       </div>
     </div>
   );

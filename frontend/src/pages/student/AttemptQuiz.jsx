@@ -14,91 +14,74 @@ import { useToast } from "@/hooks/useToast";
 export default function AttemptQuiz() {
   const { quizId } = useParams();
   const navigate = useNavigate();
-  const { addAttempt } = useQuiz(); // ✅ only use addAttempt from context now
+  const { submitQuiz } = useQuiz(); // ✅ use submitQuiz (posts to backend)
   const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
 
-  // ✅ local state for fetched quiz + questions
   const [quiz, setQuiz] = useState(null);
   const [questions, setQuestions] = useState([]);
-
-  // UI state
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
 
-  // ✅ fetch full quiz (quiz + questions) from backend
+  // Fetch quiz + questions from backend
   useEffect(() => {
-    const loadQuiz = async () => {
+    const load = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) {
-          toastError("No student token found. Please log in.");
-          return;
-        }
-
         const res = await fetch(`http://localhost:5000/api/quizzes/${quizId}`, {
-          headers: { Authorization: "Bearer " + token },
+          headers: { Authorization: `Bearer ${token}` },
         });
-
         const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.message || "Failed to load quiz");
-        }
-
-        // data = { quiz, questions }
+        if (!res.ok) throw new Error(data.message || "Failed to load quiz");
         setQuiz(data.quiz);
         setQuestions(Array.isArray(data.questions) ? data.questions : []);
-
       } catch (err) {
-        console.error(err);
         toastError(err.message || "Error loading quiz");
       }
     };
+    load();
+  }, [quizId]);
 
-    loadQuiz();
-  }, [quizId, toastError]);
-
-  // ✅ compute score against fetched questions using _id
-  const score = questions.reduce((acc, q) => {
-    const selected = answers[q._id]; // index selected by student
-    const correct = q.correctAnswer ?? q.answer; // support either field
-    return acc + (selected === correct ? 1 : 0);
-  }, 0);
-
-  const totalQuestions = questions.length;
   const question = questions[current];
+  const totalQuestions = questions.length;
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!quiz || submitted) return;
     setSubmitted(true);
 
-    const attemptId = `result-${Date.now()}`;
+    try {
+      // Build answers array backend expects:
+      // answers[i] = selected index for question i (matched by position)
+      const answersArray = questions.map((q) => answers[q._id] ?? null);
 
-    // store the attempt locally (optional; you can also POST to backend)
-    addAttempt?.({
-      id: attemptId,
-      quizId: quiz._id,
-      quizTitle: quiz.title,
-      score,
-      total: totalQuestions,
-      completedAt: new Date().toISOString(),
-      answers,
-      questions, // store taken questions snapshot
-    });
+      // ✅ POST to backend — saves Result to DB, feeds analytics
+const result = await submitQuiz(quizId, answersArray);
 
-    toastSuccess(`Submitted! Score: ${score}/${totalQuestions}`);
-    navigate(`/student/results/${attemptId}`, { replace: true });
-  }, [quiz, submitted, addAttempt, score, totalQuestions, answers, questions, navigate, toastSuccess]);
+//temp console log
+   console.log("SUBMIT QUIZ RESPONSE:", result);
 
-  // hooks
+      toastSuccess(`Submitted! Score: ${result.score}/${result.total}`);
+      
+
+      
+      console.log("NAVIGATING TO:", `/student/results/${result.resultId}`);
+// Navigate to result page with resultId from backend
+      navigate(`/student/results/${result.resultId}`, {
+  state: { result, quiz, questions },
+});
+    } catch (err) {
+      toastError(err.message || "Failed to submit quiz");
+      setSubmitted(false);
+    }
+  }, [quiz, submitted, questions, answers, quizId, submitQuiz, navigate, toastSuccess, toastError]);
+
   const antiCheat = useAntiCheat(!submitted, handleSubmit, 2);
   const { timeLeft } = useTimer((quiz?.timeLimit ?? 10) * 60, handleSubmit, !submitted && !!quiz);
 
-  // Loading/empty states
   if (!quiz) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-muted-foreground">Loading quiz…</p>
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -122,24 +105,19 @@ export default function AttemptQuiz() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
-                antiCheat.violations > 0
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
+              antiCheat.violations > 0 ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+            }`}>
               <Shield className="w-3 h-3" />
               {antiCheat.violations}/{antiCheat.maxViolations}
             </div>
             {!antiCheat.isFullscreen && (
               <button
                 onClick={() => { antiCheat.requestFullscreen(); toastInfo("Fullscreen enabled"); }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium text-foreground hover:bg-muted transition"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium hover:bg-muted transition"
                 style={{ borderColor: "hsl(var(--border))" }}
               >
-                <Maximize className="w-3 h-3" />
-                Fullscreen
+                <Maximize className="w-3 h-3" /> Fullscreen
               </button>
             )}
             <QuizTimer timeLeft={timeLeft} />
@@ -148,24 +126,27 @@ export default function AttemptQuiz() {
 
         <ProgressBar value={Object.keys(answers).length} max={totalQuestions} className="mb-6" />
 
-        {/* ✅ use _id for selection mapping */}
         <QuestionCard
           question={question}
           selectedAnswer={answers[question._id]}
           onSelect={(idx) => setAnswers((prev) => ({ ...prev, [question._id]: idx }))}
         />
 
-        <QuizNav questions={questions} answers={answers} current={current} onNavigate={setCurrent} />
+        <QuizNav
+          questions={questions}
+          answers={answers}
+          current={current}
+          onNavigate={setCurrent}
+        />
 
         <div className="flex items-center justify-between mt-4">
           <button
             onClick={() => setCurrent((c) => Math.max(0, c - 1))}
             disabled={current === 0}
-            className="flex items-center gap-1 px-4 py-2.5 rounded-xl border text-sm font-medium text-foreground hover:bg-muted transition disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-4 py-2.5 rounded-xl border text-sm font-medium hover:bg-muted transition disabled:opacity-40"
             style={{ borderColor: "hsl(var(--border))" }}
           >
-            <ChevronLeft className="w-4 h-4" />
-            Previous
+            <ChevronLeft className="w-4 h-4" /> Previous
           </button>
 
           {current < totalQuestions - 1 ? (
@@ -178,9 +159,10 @@ export default function AttemptQuiz() {
           ) : (
             <button
               onClick={handleSubmit}
-              className="flex items-center gap-1 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition"
+              disabled={submitted}
+              className="flex items-center gap-1 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60"
             >
-              Submit <Send className="w-4 h-4" />
+              <Send className="w-4 h-4" /> {submitted ? "Submitting..." : "Submit"}
             </button>
           )}
         </div>
