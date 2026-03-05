@@ -1,10 +1,27 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Clock, HelpCircle, ArrowRight } from "lucide-react";
+import { Plus, Clock, HelpCircle, ArrowRight, Trash2  } from "lucide-react";
 import { useQuiz } from "@/context/QuizContext";
+import { quizService } from "@/services/quizService";
+
 
 export default function QuizList() {
   const navigate = useNavigate();
-  const { quizzes, loading } = useQuiz();
+const { quizzes, setQuizzes, loading } = useQuiz();
+
+const handleDelete = async (quizId) => {
+  if (!confirm("Are you sure you want to delete this quiz?")) return;
+
+  try {
+    await quizService.deleteQuiz(quizId);
+
+    // remove quiz from UI immediately
+    setQuizzes(prev => prev.filter(q => q._id !== quizId));
+
+  } catch (err) {
+    console.error(err);
+    alert("Failed to delete quiz");
+  }
+};
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -36,16 +53,17 @@ export default function QuizList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {quizzes.map((quiz) => (
             <QuizCard
-              key={quiz._id}
-              quiz={{
-                ...quiz,
-                id: quiz._id,
-                difficulty: quiz.difficultyLevel,
-                status: quiz.isPublished ? "published" : "draft",
-                questionCount: quiz.questionCount ?? 0,  // ✅ from backend aggregate, not questions.length
-              }}
-              onEdit={() => navigate(`/admin/quizzes/edit/${quiz._id}`)}
-            />
+  key={quiz._id}
+  quiz={{
+    ...quiz,
+    id: quiz._id,
+    difficulty: quiz.difficultyLevel,
+    status: quiz.isPublished ? "published" : "draft",
+    questionCount: quiz.questionCount ?? 0,
+  }}
+  onEdit={() => navigate(`/admin/quizzes/edit/${quiz._id}`)}
+  onDelete={() => handleDelete(quiz._id)}
+/>
           ))}
         </div>
       )}
@@ -53,7 +71,7 @@ export default function QuizList() {
   );
 }
 
-function QuizCard({ quiz, onEdit }) {
+function QuizCard({ quiz, onEdit, onDelete }) {
   const difficulty = quiz.difficulty || "easy";
 
   const difficultyStyles = {
@@ -73,7 +91,17 @@ function QuizCard({ quiz, onEdit }) {
       style={{ border: "1px solid hsl(var(--border))", boxShadow: "var(--shadow-sm)" }}
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-semibold text-foreground">{quiz.title}</h3>
+  <h3 className="font-semibold text-foreground">{quiz.title}</h3>
+
+  {onDelete && (
+    <button
+      onClick={onDelete}
+      className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition"
+      title="Delete Quiz"
+    >
+      <Trash2 className="w-4 h-4" />
+    </button>
+  )}
 
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
           <span className={`text-[11px] px-2.5 py-0.5 rounded-full border font-medium ${difficultyStyle}`}>
