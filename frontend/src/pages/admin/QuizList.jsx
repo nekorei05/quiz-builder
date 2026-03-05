@@ -2,23 +2,25 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Clock, HelpCircle, ArrowRight, Trash2 } from "lucide-react";
 import { useQuiz } from "@/context/QuizContext";
 import { quizService } from "@/services/quizService";
+import { useState } from "react";
 
 export default function QuizList() {
   const navigate = useNavigate();
   const { quizzes, setQuizzes, loading } = useQuiz();
 
-  const handleDelete = async (quizId) => {
-    if (!confirm("Are you sure you want to delete this quiz?")) return;
+  const [quizToDelete, setQuizToDelete] = useState(null);
+
+  const handleDelete = async () => {
+    if (!quizToDelete) return;
 
     try {
-      await quizService.deleteQuiz(quizId);
+      await quizService.deleteQuiz(quizToDelete);
 
-      // remove quiz from UI immediately
-      setQuizzes(prev => prev.filter(q => q._id !== quizId));
+      setQuizzes(prev => prev.filter(q => q._id !== quizToDelete));
 
+      setQuizToDelete(null);
     } catch (err) {
       console.error(err);
-      alert("Failed to delete quiz");
     }
   };
 
@@ -61,9 +63,44 @@ export default function QuizList() {
                 questionCount: quiz.questionCount ?? 0,
               }}
               onEdit={() => navigate(`/admin/quizzes/edit/${quiz._id}`)}
-              onDelete={() => handleDelete(quiz._id)}
+              onDelete={() => setQuizToDelete(quiz._id)}
             />
           ))}
+        </div>
+      )}
+
+      {/* DELETE MODAL */}
+      {quizToDelete && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50">
+
+          <div className="bg-card rounded-2xl p-6 w-[320px] border border-border shadow-xl">
+
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Delete Quiz
+            </h3>
+
+            <p className="text-sm text-muted-foreground mb-6">
+              Are you sure you want to delete this quiz?
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setQuizToDelete(null)}
+                className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-muted"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 text-sm rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </button>
+            </div>
+
+          </div>
+
         </div>
       )}
     </div>
@@ -151,6 +188,7 @@ function QuizCard({ quiz, onEdit, onDelete }) {
         Edit
         <ArrowRight className="w-4 h-4" />
       </button>
+
     </div>
   );
 }
