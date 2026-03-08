@@ -17,7 +17,8 @@ import StudentDashboard from "@/pages/student/Dashboard";
 import AvailableQuizzes from "@/pages/student/AvailableQuizzes";
 import AttemptQuiz from "@/pages/student/AttemptQuiz";
 import QuizResult from "@/pages/student/QuizResult";
-import History from "@/pages/student/History";
+import MyResults from "@/pages/student/MyResults";
+import StudentAnalytics from "@/pages/student/History";
 
 export default function AppRouter() {
   return (
@@ -55,9 +56,9 @@ export default function AppRouter() {
           <Route index element={<StudentDashboard />} />
           <Route path="quizzes" element={<AvailableQuizzes />} />
           <Route path="quizzes/:quizId" element={<AttemptQuiz />} />
-        <Route path="results/:attemptId" element={<QuizResult />} />
-<Route path="results" element={<QuizResult />} />
-          <Route path="analytics" element={<History />} />
+          <Route path="results" element={<MyResults />} />
+          <Route path="results/:attemptId" element={<QuizResult />} />
+          <Route path="analytics" element={<StudentAnalytics />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

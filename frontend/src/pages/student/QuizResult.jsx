@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { CheckCircle, XCircle, RotateCcw, Home, Lightbulb } from "lucide-react";
+import { CheckCircle, XCircle, RotateCcw, Home, Lightbulb, ChevronLeft } from "lucide-react"; // ⬅️ add ChevronLeft
 import { explainAnswer } from "@/services/aiService";
 
 function QuestionRow({ item, index }) {
@@ -79,7 +79,7 @@ export default function QuizResult() {
 
   // ✅ Always fetch from backend — don't rely on location.state at all
   useEffect(() => {
-      console.log("QuizResult useEffect, attemptId:", attemptId);  // add this
+    console.log("QuizResult useEffect, attemptId:", attemptId);  // add this
 
     if (!attemptId) {
       setError("No result ID found");
@@ -99,7 +99,6 @@ export default function QuizResult() {
         const data = await res.json();
 
         console.log("FETCH DATA:", data);  // add this
-
 
         if (!res.ok) throw new Error(data.message || "Failed to fetch result");
 
@@ -128,7 +127,7 @@ export default function QuizResult() {
       </div>
     );
   }
-console.log("RENDER STATE - result:", result, "loading:", loading, "error:", error);
+  console.log("RENDER STATE - result:", result, "loading:", loading, "error:", error);
 
   if (error || !result) {
     return (
@@ -149,6 +148,18 @@ console.log("RENDER STATE - result:", result, "loading:", loading, "error:", err
 
   return (
     <div className="max-w-2xl mx-auto py-10 px-4">
+      {/* 🔙 Back to My Results (page 1) */}
+      <div className="mb-4">
+        <button
+          onClick={() => navigate("/student/results?page=1", { replace: true })}
+          className="inline-flex items-center gap-2 text-sm font-medium text-foreground px-3 py-2 rounded-xl hover:bg-muted/40 transition"
+          aria-label="Back to My Results (page 1)"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back to My Results
+        </button>
+      </div>
+
       <div
         className="bg-card rounded-2xl p-8 text-center mb-6"
         style={{ border: "1px solid hsl(var(--border))", boxShadow: "var(--shadow-sm)" }}
