@@ -3,12 +3,9 @@ const Result = require("../models/Result");
 const Quiz = require("../models/Quiz");
 const User = require("../models/User");
 
-/*
-@desc  Admin: get full analytics across all their quizzes
-@route GET /api/analytics/admin
-*/
 exports.getAdminAnalytics = async (req, res) => {
   try {
+
     // Get all quizzes belonging to this admin
     const quizzes = await Quiz.find({ createdBy: req.user._id }).lean();
     const quizIds = quizzes.map((q) => q._id);
@@ -44,7 +41,7 @@ exports.getAdminAnalytics = async (req, res) => {
       });
     }
 
-    // ── Stat Cards ─────────────────────────────────────────
+    // Stat Cards
     const totalAttempts = results.length;
 
     const activeStudents = new Set(results.map((r) => String(r.userId?._id || r.userId))).size;
@@ -55,7 +52,7 @@ exports.getAdminAnalytics = async (req, res) => {
 
     const perfectScores = results.filter((r) => r.score === r.total).length;
 
-    // ── Score Trend (by date) ──────────────────────────────
+    // Score Trend (by date) 
     // Group attempts by date, average percentage per day
     const byDate = {};
     results.forEach((r) => {
@@ -73,7 +70,7 @@ exports.getAdminAnalytics = async (req, res) => {
       accuracy: Math.round(val.total / val.count),
     }));
 
-    // ── Per Quiz Stats ─────────────────────────────────────
+    // Per Quiz Stats
     const quizMap = {};
     results.forEach((r) => {
       const id = String(r.quizId?._id || r.quizId);
@@ -91,7 +88,7 @@ exports.getAdminAnalytics = async (req, res) => {
       perfectScores: q.perfect,
     }));
 
-    // ── Top Students ───────────────────────────────────────
+    // Top Students 
     const studentMap = {};
     results.forEach((r) => {
       const id = String(r.userId?._id || r.userId);

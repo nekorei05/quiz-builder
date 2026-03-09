@@ -1,5 +1,3 @@
-// services/aiService.js — GEMINI SERVER VERSION (with DEMO_MODE)
-// --------------------------------------------------------------
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const DEMO_MODE = String(process.env.DEMO_MODE).toLowerCase() === "true";
@@ -23,7 +21,7 @@ async function generateQuizFromText(text, numberOfQuestions) {
     throw new Error(`Maximum ${MAX_QUESTIONS} questions allowed`);
   }
 
-  // DEMO MODE: do not call Gemini at all
+  // DEMO MODE: no call to Gemini 
   if (DEMO_MODE || !genAI) {
     return JSON.stringify({
       title: "AI Disabled in Demo",
@@ -67,7 +65,7 @@ ${trimmedText}
 `.trim();
 
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  // Use generateContent with a single text input
+  // generateContent with a single text input
   const result = await model.generateContent(prompt);
   const out = result.response.text();
 

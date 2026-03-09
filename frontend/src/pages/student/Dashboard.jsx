@@ -40,7 +40,6 @@ export default function StudentDashboard() {
       .catch(() => setHistory([]));
   }, []);
 
-  // quizzes from context are already published-only for students
   const totalAttempts = history.length;
   const avgScore = history.length > 0
     ? Math.round(history.reduce((sum, r) => sum + (r.percentage || 0), 0) / history.length)

@@ -9,17 +9,13 @@ exports.protect = async (req, res, next) => {
 
   let token;
 
-  // Check if token exists in headers
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
 
     try {
-      // Extract token from "Bearer <token>"
       token = req.headers.authorization.split(' ')[1];
 
-      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Attach user to request object
       req.user = await User.findById(decoded.id).select('-password');
 
       next();
@@ -35,10 +31,9 @@ exports.protect = async (req, res, next) => {
 };
 
 
-/*
-Role-based authorization
-Example: only admin can access
-*/
+
+//Role-based authorization
+
 exports.authorize = (...roles) => {
   const allowed = roles.map(r => String(r).toLowerCase());
   return (req, res, next) => {

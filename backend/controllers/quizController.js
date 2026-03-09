@@ -5,7 +5,7 @@ const parseFile = require("../utils/parseFile");
 const { generateQuizFromText } = require("../services/aiService");
 
 
-// ── CREATE ─────────────────────────────────────────────────────
+//create quiz
 
 exports.createQuiz = async (req, res) => {
   try {
@@ -18,7 +18,7 @@ exports.createQuiz = async (req, res) => {
     const quiz = await Quiz.create({
       title, description, subject, difficultyLevel, timeLimit, totalMarks,
       createdBy: req.user._id,
-      isPublished: isPublished ?? false,  // use frontend value, default draft
+      isPublished: isPublished ?? false,  
     });
 
     const formatted = questions.map((q) => ({
@@ -38,7 +38,7 @@ exports.createQuiz = async (req, res) => {
   }
 };
 
-// ── READ ───────────────────────────────────────────────────────
+//published quizzes
 
 exports.getPublishedQuizzes = async (req, res) => {
   try {
@@ -67,7 +67,6 @@ exports.getMyQuizzes = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Attach question counts for admin list
     const quizIds = quizzes.map((q) => q._id);
     const counts = await Question.aggregate([
       { $match: { quizId: { $in: quizIds } } },
@@ -88,7 +87,7 @@ exports.getQuizById = async (req, res) => {
     const quiz = await Quiz.findById(req.params.id).lean();
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-    // Admin sees correctAnswer, student doesn't
+    // Visibility of ans to admin
     const questions = await Question.find({ quizId: req.params.id })
       .select(req.user.role === "admin" ? "" : "-correctAnswer")
       .lean();
@@ -100,20 +99,19 @@ exports.getQuizById = async (req, res) => {
   }
 };
 
-// ── UPDATE ─────────────────────────────────────────────────────
+//update 
 
-/*
-@desc  Admin: update quiz metadata + smart question sync
+/*  Admin: 
        - existing questions (have _id) → update in place
        - new questions (no _id) → insert
        - questions removed in frontend → delete from DB
-@route PUT /api/quizzes/:id
+route: PUT /api/quizzes/:id
 */
+
 exports.updateQuiz = async (req, res) => {
   try {
     const { questions, ...metaFields } = req.body;
 
-    // Verify ownership
     const quiz = await Quiz.findOne({ _id: req.params.id, createdBy: req.user._id });
     if (!quiz) return res.status(404).json({ message: "Quiz not found or not authorized" });
 
@@ -126,12 +124,11 @@ exports.updateQuiz = async (req, res) => {
 
     // 2. Sync questions if provided
     if (Array.isArray(questions)) {
-      // IDs that still exist in the updated list
       const incomingIds = questions
         .filter((q) => q._id)
         .map((q) => String(q._id));
 
-      // Delete questions that were removed in the frontend
+      // Delete questions 
       await Question.deleteMany({
         quizId: quiz._id,
         _id: { $nin: incomingIds },
@@ -147,16 +144,14 @@ exports.updateQuiz = async (req, res) => {
         };
 
         if (q._id) {
-          // Existing question → update it
           await Question.findByIdAndUpdate(q._id, data);
         } else {
-          // New question → insert it
           await Question.create({ quizId: quiz._id, ...data });
         }
       }
     }
 
-    // 3. Return fresh data
+    // 3. Return new data
     const updatedQuestions = await Question.find({ quizId: quiz._id }).lean();
 
     return res.json({
@@ -170,11 +165,10 @@ exports.updateQuiz = async (req, res) => {
   }
 };
 
-// ── DELETE ─────────────────────────────────────────────────────
-
+//delete quiz
 /*
-@desc  Admin: delete entire quiz + all its questions + results
-@route DELETE /api/quizzes/:id
+  Admin: delete entire quiz 
+route : DELETE /api/quizzes/:id
 */
 exports.deleteQuiz = async (req, res) => {
   try {
@@ -192,7 +186,7 @@ exports.deleteQuiz = async (req, res) => {
   }
 };
 
-// ── SUBMIT ─────────────────────────────────────────────────────
+//submit
 
 exports.submitQuiz = async (req, res) => {
   try {
@@ -211,10 +205,10 @@ exports.submitQuiz = async (req, res) => {
 
       return {
         questionId: q._id,
-        questionText: q.questionText,   // ✅ included so frontend doesn't need questions array
-        options: q.options,             // ✅ included so frontend can show answer text
-        selected,                       // the index student picked
-        correctAnswer: q.correctAnswer, // ✅ always included in breakdown (not stripped)
+        questionText: q.questionText,   
+        options: q.options,             
+        selected,                       
+        correctAnswer: q.correctAnswer, 
         isCorrect,
       };
     });
@@ -238,7 +232,7 @@ exports.submitQuiz = async (req, res) => {
   }
 };
 
-// ── HISTORY ────────────────────────────────────────────────────
+//history 
 
 exports.getQuizHistory = async (req, res) => {
   try {
@@ -254,7 +248,7 @@ exports.getQuizHistory = async (req, res) => {
   }
 };
 
-// ── AI GENERATE ─────────────────────────────────────────────
+//ai generate
 
 exports.aiGenerateQuiz = async (req, res) => {
   try {
@@ -264,23 +258,22 @@ exports.aiGenerateQuiz = async (req, res) => {
       return res.status(400).json({ message: "File is required" });
     }
 
-    // 1️⃣ Extract text from uploaded file (THIS PART WORKS!)
+    // extract text 
     const extractedText = await parseFile(req.file);
 
     if (!extractedText || extractedText.trim().length < 20) {
       return res.status(400).json({ message: "File content too small" });
     }
 
-    // 2️⃣ ACTIVATE GEMINI (The part you were missing)
-    // This calls your generateQuizFromText function in aiService.js
+    // call to gemini
     const aiRawResponse = await generateQuizFromText(extractedText, numberOfQuestions || 5);
 
-    // 3️⃣ Parse the AI string into JSON
-    // We strip markdown backticks just in case
+    // parse  AI -> JSON
+    
     const cleanJson = aiRawResponse.replace(/```json|```/g, "").trim();
     const quizData = JSON.parse(cleanJson);
 
-    // 4️⃣ Return the ACTUAL questions
+    // return questions
     return res.json({
       message: "Quiz generated successfully",
       ...quizData 

@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/useToast";
 export default function AttemptQuiz() {
   const { quizId } = useParams();
   const navigate = useNavigate();
-  const { submitQuiz } = useQuiz(); // ✅ use submitQuiz (posts to backend)
+  const { submitQuiz } = useQuiz(); 
   const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
 
   const [quiz, setQuiz] = useState(null);
@@ -50,21 +50,16 @@ export default function AttemptQuiz() {
     setSubmitted(true);
 
     try {
-      // Build answers array backend expects:
-      // answers[i] = selected index for question i (matched by position)
       const answersArray = questions.map((q) => answers[q._id] ?? null);
 
-      // ✅ POST to backend — saves Result to DB, feeds analytics
 const result = await submitQuiz(quizId, answersArray);
 
 //temp console log
    console.log("SUBMIT QUIZ RESPONSE:", result);
 
       toastSuccess(`Submitted! Score: ${result.score}/${result.total}`);
-      
-
-      
       console.log("NAVIGATING TO:", `/student/results/${result.resultId}`);
+      
 // Navigate to result page with resultId from backend
       navigate(`/student/results/${result.resultId}`, {
   state: { result, quiz, questions },

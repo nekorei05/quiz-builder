@@ -1,4 +1,3 @@
-// backend/routes/analyticsRoutes.js
 const express = require("express");
 const router = express.Router();
 const { protect, authorize } = require("../middleware/authMiddleware");
@@ -31,12 +30,10 @@ router.get("/student", protect, authorize("student"), async (req, res) => {
     const uniqueQuizzes = new Set(results.map(r => String(r.quizId?._id || r.quizId))).size;
     const avgScore = Math.round(results.reduce((s, r) => s + r.percentage, 0) / results.length);
 
-    // Improvement: last attempt vs first attempt
     const improvement = results.length >= 2
       ? Math.round(results[results.length - 1].percentage - results[0].percentage)
       : 0;
 
-    // Score trend — one point per attempt
     const scoreTrend = results.map((r, i) => ({
       name: r.quizId?.title
         ? r.quizId.title.length > 12 ? r.quizId.title.slice(0, 12) + "…" : r.quizId.title
@@ -44,7 +41,6 @@ router.get("/student", protect, authorize("student"), async (req, res) => {
       score: r.percentage,
     }));
 
-    // Per quiz — best score per quiz + attempt count
     const quizMap = {};
     results.forEach((r) => {
       const id = String(r.quizId?._id || r.quizId);

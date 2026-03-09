@@ -33,8 +33,7 @@ router.post('/:id/submit', protect, authorize('student'), submitQuiz);
 router.post("/ai-generate",protect, authorize("admin"), upload.single("file"), aiGenerateQuiz);
 
 // ── SHARED (admin + student) ───────────────────────────
-// Admin needs this to prefill EditQuiz, student needs it to attempt quiz
-router.get('/:id', protect, authorize('admin', 'student'), getQuizById);  // ✅ was student-only
+router.get('/:id', protect, authorize('admin', 'student'), getQuizById);  
 
 
 module.exports = router;

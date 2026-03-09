@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const breakdownSchema = new mongoose.Schema({
   questionId: { type: mongoose.Schema.Types.ObjectId, ref: "Question" },
   questionText: String,
-  options: [String],   // ✅ was missing — needed to show answer text in result page
+  options: [String],   
   selected: { type: Number, default: null },
   correctAnswer: Number,
   isCorrect: Boolean,

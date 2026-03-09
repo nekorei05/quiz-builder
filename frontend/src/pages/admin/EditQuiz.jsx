@@ -14,8 +14,7 @@ export default function EditQuiz() {
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const data = await getQuizById(quizId); // returns { quiz, questions }
-        // Merge questions into quiz object so CreateQuiz can prefill them
+        const data = await getQuizById(quizId); 
         setQuiz({
           ...data.quiz,
           questions: data.questions.map((q) => ({

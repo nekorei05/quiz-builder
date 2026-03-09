@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true   // No duplicate emails allowed
+      unique: true  
     },
 
     password: {
@@ -31,9 +31,7 @@ const userSchema = new mongoose.Schema(
 
 /*
 PRE-SAVE MIDDLEWARE
-
-This runs automatically before a user is saved.
-We hash the password here so we NEVER store plain text passwords.
+hashing the passwords
 */
 userSchema.pre('save', async function () {
 
@@ -47,9 +45,9 @@ userSchema.pre('save', async function () {
 
 });
 
-/*
-Custom method to compare passwords during login
-*/
+
+//Custom method to compare passwords during login
+
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

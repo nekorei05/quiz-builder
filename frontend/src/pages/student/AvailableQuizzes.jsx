@@ -7,7 +7,6 @@ const AvailableQuizzes = () => {
   const navigate = useNavigate();
   const { quizzes } = useQuiz();
 
-  // Backend already returns published quizzes only
   const publishedQuizzes = (quizzes || []).filter(q => q.isPublished);
 
   if (!publishedQuizzes.length) {

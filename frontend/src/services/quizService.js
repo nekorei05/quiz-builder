@@ -1,4 +1,3 @@
-// services/quizService.js
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -37,8 +36,7 @@ export async function createQuiz(data) {
       difficultyLevel: data.difficultyLevel || data.difficulty,
       timeLimit: data.timeLimit,
       totalMarks: data.totalMarks ?? data.questions.length * 10,
-      isPublished: data.isPublished, // <-- included
-
+      isPublished: data.isPublished, 
       questions: data.questions.map((q) => ({
         questionText: q.questionText || q.text,
         options: q.options,
@@ -51,7 +49,7 @@ export async function createQuiz(data) {
   return handleResponse(res);
 }
 
-// UPDATE QUIZ (ONLY ONE VERSION)
+// UPDATE QUIZ 
 export async function updateQuiz(id, data) {
   const res = await fetch(`${BASE_URL}/quizzes/${id}`, {
     method: "PUT",
@@ -63,7 +61,7 @@ export async function updateQuiz(id, data) {
       difficultyLevel: data.difficultyLevel || data.difficulty,
       timeLimit: data.timeLimit,
       totalMarks: data.totalMarks ?? data.questions.length * 10,
-      isPublished: data.isPublished, // <-- CRITICAL FIX
+      isPublished: data.isPublished, 
 
       questions: data.questions.map((q) => ({
         ...(q._id ? { _id: q._id } : {}),

@@ -1,15 +1,12 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
-/*
- Function to generate JWT 
- Now includes BOTH id and role
-*/
+//   generate JWT 
 const generateToken = (user) => {
   return jwt.sign(
     {
       id: user._id,
-      role: user.role            // ✅ IMPORTANT: Include role in token
+      role: user.role           
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE }
@@ -17,14 +14,14 @@ const generateToken = (user) => {
 };
 
 /*
- @desc Register new user
- @route POST /api/auth/register
+Register new user
+ route:  POST /api/auth/register
 */
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // Check if user already exists
+    //if user exits
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
@@ -35,12 +32,12 @@ exports.registerUser = async (req, res) => {
       name,
       email,
       password,
-      role // MongoDB will store the correct role
+      role 
     });
 
     if (user) {
       res.status(201).json({
-        token: generateToken(user), // ✅ Includes role now
+        token: generateToken(user),
         user: {
           _id: user._id,
           name: user.name,
@@ -56,20 +53,19 @@ exports.registerUser = async (req, res) => {
 };
 
 /*
- @desc Login user
- @route POST /api/auth/login
+Login  user
+ route:  POST /api/auth/login
 */
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user by email
     const user = await User.findOne({ email });
 
-    // Validate credentials
+    // validate credentials
     if (user && (await user.matchPassword(password))) {
       res.json({
-        token: generateToken(user), // ✅ Includes role now
+        token: generateToken(user), 
         user: {
           _id: user._id,
           name: user.name,

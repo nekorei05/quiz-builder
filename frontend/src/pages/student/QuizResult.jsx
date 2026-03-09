@@ -77,9 +77,8 @@ export default function QuizResult() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ✅ Always fetch from backend — don't rely on location.state at all
   useEffect(() => {
-    console.log("QuizResult useEffect, attemptId:", attemptId);  // add this
+    console.log("QuizResult useEffect, attemptId:", attemptId);  
 
     if (!attemptId) {
       setError("No result ID found");
@@ -93,12 +92,13 @@ export default function QuizResult() {
         const res = await fetch(`http://localhost:5000/api/results/${attemptId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         //temp console log
         console.log("FETCH STATUS:", res.status);
 
         const data = await res.json();
 
-        console.log("FETCH DATA:", data);  // add this
+        console.log("FETCH DATA:", data);  
 
         if (!res.ok) throw new Error(data.message || "Failed to fetch result");
 
@@ -112,7 +112,7 @@ export default function QuizResult() {
         setError(err.message);
       } finally {
 
-        console.log("DONE LOADING");  // add this
+        console.log("DONE LOADING"); 
         setLoading(false);
       }
     };
@@ -148,7 +148,7 @@ export default function QuizResult() {
 
   return (
     <div className="max-w-2xl mx-auto py-10 px-4">
-      {/* 🔙 Back to My Results (page 1) */}
+      {/* Back to My Results (page 1) */}
       <div className="mb-4">
         <button
           onClick={() => navigate("/student/results?page=1", { replace: true })}
