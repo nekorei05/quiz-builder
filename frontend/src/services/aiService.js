@@ -1,30 +1,34 @@
-export async function generateQuestions(data) {
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  return {
-    success: true,
-    questions: [
-      {
-        id: Date.now().toString(),
-        text: `Sample AI question for ${data?.topic || "topic"}`,
-        options: [
-          "Option A",
-          "Option B",
-          "Option C",
-          "Option D"
-        ],
-        correctAnswer: 0,
-      },
-    ],
-  };
+export async function generateQuestions() {
+  throw new Error("Use the backend AI generate route instead");
 }
 
 
-export async function explainAnswer(data) {
-  await new Promise(resolve => setTimeout(resolve, 400));
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
   return {
-    explanation:
-      `This is a mock explanation for question "${data?.question}".`,
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+}
+
+/*
+  explainAnswer — calls backend which checks DB cache first,
+  only calls Gemini if no cached explanation exists
+*/
+export async function explainAnswer({ questionId, questionText, correctAnswer }) {
+  const res = await fetch(`${BASE_URL}/ai/explain`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ questionId, questionText, correctAnswer }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to get explanation");
+  }
+
+  return data;
 }

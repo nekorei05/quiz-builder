@@ -19,6 +19,18 @@ router.get("/:resultId", protect, authorize("student", "admin"), async (req, res
     const quiz = await Quiz.findById(result.quizId).lean();
     const questions = await Question.find({ quizId: result.quizId }).lean();
 
+
+    const enrichedBreakdown = (result.breakdown || []).map((item) => {
+      const question = questions.find(
+        (q) => String(q._id) === String(item.questionId)
+      );
+      return {
+        ...item,
+        questionId: item.questionId,
+        aiExplanation: question?.aiExplanation || null,
+      };
+    });
+
     return res.json({ result, quiz, questions });
   } catch (err) {
     console.error(err);

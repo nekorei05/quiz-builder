@@ -1,14 +1,23 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { CheckCircle, XCircle, RotateCcw, Home, Lightbulb, ChevronLeft } from "lucide-react"; // ⬅️ add ChevronLeft
+import { CheckCircle, XCircle, RotateCcw, Home, Lightbulb } from "lucide-react";
 import { explainAnswer } from "@/services/aiService";
 
 function QuestionRow({ item, index }) {
   const [showExplanation, setShowExplanation] = useState(false);
   const [explanation, setExplanation] = useState("");
   const [loadingExplanation, setLoadingExplanation] = useState(false);
+  const [cached, setCached] = useState(false);
 
-  const { questionText, options = [], selected, correctAnswer, isCorrect } = item;
+  const { questionId, questionText, options = [], selected, correctAnswer, isCorrect, aiExplanation: cachedExplanation } = item;
+
+  // Pre-load explanation if already cached in DB
+  useEffect(() => {
+    if (cachedExplanation) {
+      setExplanation(cachedExplanation);
+      setCached(true);
+    }
+  }, [cachedExplanation]);
 
   const userAnswerText =
     selected !== null && selected !== undefined
@@ -23,10 +32,15 @@ function QuestionRow({ item, index }) {
     if (explanation) return;
     setLoadingExplanation(true);
     try {
-      const res = await explainAnswer({ question: questionText, correctAnswer: correctAnswerText });
+      const res = await explainAnswer({
+        questionId,
+        questionText,
+        correctAnswer: correctAnswerText,
+      });
       setExplanation(res.explanation || "No explanation available.");
-    } catch {
-      setExplanation("Could not load explanation.");
+      setCached(res.cached || false);
+    } catch (err) {
+      setExplanation(err.message || "Could not load explanation.");
     } finally {
       setLoadingExplanation(false);
     }
@@ -43,6 +57,7 @@ function QuestionRow({ item, index }) {
           : <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />}
         <p className="text-sm font-semibold text-foreground">Q{index + 1}: {questionText}</p>
       </div>
+
       <p className="text-xs text-muted-foreground pl-6">
         Your answer:{" "}
         <span className={isCorrect ? "text-success font-medium" : "text-destructive font-medium"}>
@@ -52,6 +67,7 @@ function QuestionRow({ item, index }) {
           <> · Correct: <span className="text-foreground font-medium">{correctAnswerText}</span></>
         )}
       </p>
+
       <button
         onClick={handleExplain}
         className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors pl-6"
@@ -59,9 +75,23 @@ function QuestionRow({ item, index }) {
         <Lightbulb className="w-3.5 h-3.5" />
         {showExplanation ? "Hide Explanation" : "Show AI Explanation"}
       </button>
+
       {showExplanation && (
         <div className="mt-2 mx-6 px-3 py-2.5 rounded-xl bg-warning/5 border border-warning/20 text-xs text-muted-foreground leading-relaxed">
-          {loadingExplanation ? "Loading..." : <><span className="mr-1">💡</span>{explanation}</>}
+          {loadingExplanation ? (
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 border border-warning border-t-transparent rounded-full animate-spin inline-block" />
+              Generating explanation...
+            </span>
+          ) : (
+            <span>
+              <span className="mr-1">💡</span>
+              {explanation}
+              {cached && (
+                <span className="ml-2 text-[10px] opacity-50">(cached)</span>
+              )}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -78,8 +108,6 @@ export default function QuizResult() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    console.log("QuizResult useEffect, attemptId:", attemptId);  
-
     if (!attemptId) {
       setError("No result ID found");
       setLoading(false);
@@ -92,27 +120,13 @@ export default function QuizResult() {
         const res = await fetch(`http://localhost:5000/api/results/${attemptId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
-        //temp console log
-        console.log("FETCH STATUS:", res.status);
-
         const data = await res.json();
-
-        console.log("FETCH DATA:", data);  
-
         if (!res.ok) throw new Error(data.message || "Failed to fetch result");
-
-        //temp consolelog
-        console.log("SETTING RESULT:", data.result);
-
         setResult(data.result);
         setQuiz(data.quiz);
       } catch (err) {
-        console.error(err);
         setError(err.message);
       } finally {
-
-        console.log("DONE LOADING"); 
         setLoading(false);
       }
     };
@@ -127,7 +141,6 @@ export default function QuizResult() {
       </div>
     );
   }
-  console.log("RENDER STATE - result:", result, "loading:", loading, "error:", error);
 
   if (error || !result) {
     return (
@@ -148,18 +161,6 @@ export default function QuizResult() {
 
   return (
     <div className="max-w-2xl mx-auto py-10 px-4">
-      {/* Back to My Results (page 1) */}
-      <div className="mb-4">
-        <button
-          onClick={() => navigate("/student/results?page=1", { replace: true })}
-          className="inline-flex items-center gap-2 text-sm font-medium text-foreground px-3 py-2 rounded-xl hover:bg-muted/40 transition"
-          aria-label="Back to My Results (page 1)"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Back to My Results
-        </button>
-      </div>
-
       <div
         className="bg-card rounded-2xl p-8 text-center mb-6"
         style={{ border: "1px solid hsl(var(--border))", boxShadow: "var(--shadow-sm)" }}

@@ -7,7 +7,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/authRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
 const resultRoutes = require("./routes/resultRoutes");
-
+const aiRoutes = require("./routes/aiRoutes");
 
 // Middleware Imports
 const { protect, authorize } = require("./middleware/authMiddleware");
@@ -62,7 +62,7 @@ app.use("/api/quizzes", quizRoutes);
 
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/results", resultRoutes);
-
+app.use("/api/ai", aiRoutes);
 
 
 // Root route

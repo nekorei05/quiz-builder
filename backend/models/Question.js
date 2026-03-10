@@ -40,6 +40,10 @@ const questionSchema = new mongoose.Schema(
       type: String,
       enum: ["easy", "medium", "hard"],
       required: true
+    },
+    aiExplanation: {
+      type: String,
+      default: null,
     }
   },
   { timestamps: true }
