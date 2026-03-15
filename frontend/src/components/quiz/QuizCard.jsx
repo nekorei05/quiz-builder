@@ -14,28 +14,19 @@ const QuizCard = ({
   onAction,
   actionLabel = "Start Quiz",
 }) => {
-  let difficultyColor = "bg-muted text-muted-foreground border-border";
-
-  if (DIFFICULTY_COLORS && DIFFICULTY_COLORS[difficulty]) {
-    difficultyColor = DIFFICULTY_COLORS[difficulty];
-  }
+  const difficultyColor =
+    DIFFICULTY_COLORS?.[difficulty] ||
+    "bg-muted text-muted-foreground border-border";
 
   const showDescription = Boolean(description);
   const showStatus = Boolean(status);
   const showAction = typeof onAction === "function";
 
-  const handleActionClick = () => {
-    if (showAction) {
-      onAction();
-    }
-  };
-
   return (
-    <div className="glass-card p-5 flex flex-col gap-3 hover:shadow-lg transition-shadow">
-
-      <div className="flex items-start justify-between gap-2">
+    <div className="glass-card p-5 flex flex-col gap-4 hover:shadow-lg transition-all duration-200">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-sm">
+          <h3 className="font-semibold text-base text-foreground">
             {title}
           </h3>
 
@@ -44,9 +35,9 @@ const QuizCard = ({
           </p>
         </div>
 
-        <div className="flex gap-1.5">
+        <div className="flex items-center gap-2">
           <span
-            className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${difficultyColor}`}
+            className={`text-[11px] px-2 py-0.5 rounded-full border font-medium capitalize ${difficultyColor}`}
           >
             {difficulty}
           </span>
@@ -66,20 +57,20 @@ const QuizCard = ({
       </div>
 
       {showDescription && (
-        <p className="text-xs text-muted-foreground line-clamp-2">
+        <p className="text-sm text-muted-foreground line-clamp-2">
           {description}
         </p>
       )}
 
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          {timeLimit} min
+      <div className="flex items-center justify-between text-sm bg-muted/40 px-3 py-2 rounded-lg">
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <HelpCircle className="w-4 h-4" />
+          {questionCount} Questions
         </span>
 
-        <span className="flex items-center gap-1">
-          <HelpCircle className="w-3 h-3" />
-          {questionCount} questions
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="w-4 h-4" />
+          {timeLimit ? `${timeLimit} Min` : "No Timer"}
         </span>
       </div>
 
@@ -87,14 +78,13 @@ const QuizCard = ({
         <Button
           size="sm"
           type="button"
-          onClick={handleActionClick}
+          onClick={onAction}
           className="mt-auto w-full gap-2"
         >
           {actionLabel}
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-4 h-4" />
         </Button>
       )}
-
     </div>
   );
 };
