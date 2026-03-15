@@ -146,8 +146,8 @@ export default function AIGenerate() {
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
 
-  const [count, setCount] = useState(5);
-  const [time, setTime] = useState(15);
+  const [count, setCount] = useState("");
+  const [time, setTime] = useState("");
   const [title, setTitle] = useState("");
 
   const [loading, setLoading] = useState(false);
