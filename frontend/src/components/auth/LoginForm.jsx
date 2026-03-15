@@ -111,10 +111,6 @@ export default function LoginForm() {
           Create one
         </Link>
       </p>
-
-      <p className="text-xs text-muted-foreground text-center mt-3">
-        Tip: Use admin email for admin access
-      </p>
     </div>
   );
 }
