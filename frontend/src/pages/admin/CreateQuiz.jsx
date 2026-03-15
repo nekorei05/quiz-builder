@@ -20,8 +20,8 @@ export default function CreateQuiz({ initialData = null, isEditing = false }) {
   const [title, setTitle] = useState(initialData?.title ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [difficulty, setDifficulty] = useState(initialData?.difficultyLevel ?? "medium");
-  const [timeLimit, setTimeLimit] = useState(initialData?.timeLimit ?? 15);
-  const [isPublished, setIsPublished] = useState(initialData?.isPublished ?? false); // ✅ default draft
+  const [timeLimit, setTimeLimit] = useState(initialData?.timeLimit ?? "");
+  const [isPublished, setIsPublished] = useState(initialData?.isPublished ?? false); 
   const [questions, setQuestions] = useState(() =>
     initialData?.questions?.length ? initialData.questions : [{ ...EMPTY_QUESTION }]
   );
@@ -56,7 +56,7 @@ export default function CreateQuiz({ initialData = null, isEditing = false }) {
       difficultyLevel: difficulty,
       timeLimit,
       totalMarks: questions.length * 10,
-      isPublished,   // ✅ send to backend
+      isPublished,   
       questions: questions.map((q) => ({
         ...(q._id ? { _id: q._id } : {}),
         questionText: q.questionText,
