@@ -1,7 +1,15 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import {Sparkles,Upload,Plus,FolderOpen, X,CheckCircle,Pencil,Save,} from "lucide-react";
-import { generateQuestions } from "@/services/aiService";
+import {
+  Sparkles,
+  Upload,
+  Plus,
+  FolderOpen,
+  X,
+  CheckCircle,
+  Pencil,
+  Save,
+} from "lucide-react";
 import { useQuiz } from "@/context/QuizContext";
 import { useToast } from "@/hooks/useToast";
 import QuestionEditor from "@/components/quiz/QuestionEditor";
@@ -140,7 +148,7 @@ export default function AIGenerate() {
 
   const [count, setCount] = useState(5);
   const [time, setTime] = useState(15);
-  const [title, setTitle] = useState("AI Generated Quiz");
+  const [title, setTitle] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
@@ -148,13 +156,16 @@ export default function AIGenerate() {
   const [preview, setPreview] = useState(false);
   const [drag, setDrag] = useState(false);
 
-    function readFile(f) {
+  function readFile(f) {
     if (!f) return;
+
     if (f.size > MAX_FILE_SIZE) {
       toast.error("File too large (Max 5MB)");
       return;
     }
+
     setFile(f);
+
     if (f.type === "application/pdf") {
       setText(`[PDF Ready: ${f.name}]`);
     } else {
@@ -162,11 +173,11 @@ export default function AIGenerate() {
       reader.onload = () => setText(reader.result);
       reader.readAsText(f);
     }
+
     toast.success("File attached");
   }
 
-
-    async function handleGenerate() {
+  async function handleGenerate() {
     if (!text.trim() && !file) {
       toast.error("Enter source material or upload a file");
       return;
@@ -175,42 +186,49 @@ export default function AIGenerate() {
     setLoading(true);
 
     const formData = new FormData();
+
     if (file) {
       formData.append("file", file);
     } else {
-      const blob = new Blob([text], { type: 'text/plain' });
+      const blob = new Blob([text], { type: "text/plain" });
       formData.append("file", blob, "input.txt");
     }
+
     formData.append("numberOfQuestions", count);
 
     try {
-      const response = await fetch("http://localhost:5000/api/quizzes/ai-generate", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        "http://localhost:5000/api/quizzes/ai-generate",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Generation failed");
 
-      const formattedQuestions = data.questions.map(q => ({
+      if (!response.ok) {
+        throw new Error(data.message || "Generation failed");
+      }
+
+      const formattedQuestions = data.questions.map((q) => ({
         text: q.questionText,
         options: q.options,
         correctAnswer: q.correctAnswer,
-        difficulty: q.difficulty || "medium"
+        difficulty: q.difficulty || "medium",
       }));
 
       setQuestions(formattedQuestions);
-      toast.success("Questions generated!");
+      toast.success("Questions generated");
     } catch (err) {
       toast.error(err.message || "Failed to generate");
     } finally {
       setLoading(false);
     }
   }
-
 
   function updateQuestion(index, field, value) {
     const list = [...questions];
@@ -243,14 +261,14 @@ export default function AIGenerate() {
     ]);
   }
 
-    async function saveQuiz() {
+  async function saveQuiz() {
     if (!questions.length) return;
 
-    const finalQuestions = questions.map(q => ({
+    const finalQuestions = questions.map((q) => ({
       questionText: q.text,
       options: q.options,
       correctAnswer: q.correctAnswer,
-      difficulty: q.difficulty
+      difficulty: q.difficulty,
     }));
 
     try {
@@ -264,13 +282,12 @@ export default function AIGenerate() {
         questions: finalQuestions,
       });
 
-      toast.success("Quiz saved successfully!");
+      toast.success("Quiz saved successfully");
       navigate("/admin");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save quiz");
     }
   }
-
 
   function handleDrop(e) {
     e.preventDefault();
@@ -280,7 +297,6 @@ export default function AIGenerate() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
-
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">
           AI Question Generator
@@ -298,9 +314,7 @@ export default function AIGenerate() {
           boxShadow: "var(--shadow-sm)",
         }}
       >
-
         <div className="flex justify-between items-center">
-
           <div className="flex gap-2 items-center text-sm font-medium">
             <Upload className="w-4 h-4" />
             Source Material
@@ -321,7 +335,6 @@ export default function AIGenerate() {
             className="hidden"
             onChange={(e) => readFile(e.target.files?.[0])}
           />
-
         </div>
 
         <textarea
@@ -344,16 +357,16 @@ export default function AIGenerate() {
         />
 
         <div className="grid grid-cols-3 gap-3">
-
           <input
             type="number"
             value={count}
             min={1}
             max={20}
+            placeholder="Number of Questions"
             onChange={(e) =>
               setCount(Math.min(20, Math.max(1, Number(e.target.value))))
             }
-            className="h-10 px-3 rounded-xl bg-background"
+            className="h-10 px-3 rounded-xl bg-background text-sm"
             style={{ border: "1px solid hsl(var(--border))" }}
           />
 
@@ -362,20 +375,21 @@ export default function AIGenerate() {
             value={time}
             min={1}
             max={120}
+            placeholder="Time Limit (minutes)"
             onChange={(e) =>
               setTime(Math.min(120, Math.max(1, Number(e.target.value))))
             }
-            className="h-10 px-3 rounded-xl bg-background"
+            className="h-10 px-3 rounded-xl bg-background text-sm"
             style={{ border: "1px solid hsl(var(--border))" }}
           />
 
           <input
             value={title}
+            placeholder="Quiz Title"
             onChange={(e) => setTitle(e.target.value)}
-            className="h-10 px-3 rounded-xl bg-background"
+            className="h-10 px-3 rounded-xl bg-background text-sm"
             style={{ border: "1px solid hsl(var(--border))" }}
           />
-
         </div>
 
         <button
@@ -386,12 +400,10 @@ export default function AIGenerate() {
           <Sparkles className="w-4 h-4" />
           {loading ? "Generating..." : "Generate Questions"}
         </button>
-
       </div>
 
       {questions.length > 0 && (
         <div className="mt-8 space-y-4">
-
           {questions.map((q, i) => (
             <QuestionEditor
               key={i}
@@ -405,7 +417,6 @@ export default function AIGenerate() {
           ))}
 
           <div className="flex justify-between">
-
             <button
               onClick={addQuestion}
               className="flex gap-2 px-4 py-2.5 border rounded-xl hover:bg-muted"
@@ -422,9 +433,7 @@ export default function AIGenerate() {
               <Save className="w-4 h-4" />
               Create Quiz
             </button>
-
           </div>
-
         </div>
       )}
 
@@ -437,7 +446,6 @@ export default function AIGenerate() {
           onConfirm={saveQuiz}
         />
       )}
-
     </div>
   );
 }
