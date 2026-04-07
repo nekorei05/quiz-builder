@@ -8,7 +8,7 @@ A full-stack AI-powered quiz platform where admins create and manage quizzes and
 
 ---
 
-## ✨ Features
+## Features
 
 ###  Admin
 - Create, edit and delete quizzes with full question management
@@ -25,7 +25,7 @@ A full-stack AI-powered quiz platform where admins create and manage quizzes and
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer | Tech |
 |---|---|
@@ -39,7 +39,7 @@ A full-stack AI-powered quiz platform where admins create and manage quizzes and
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+
@@ -87,7 +87,7 @@ App runs at `http://localhost:5173`
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 quiz-builder/
@@ -111,7 +111,7 @@ quiz-builder/
 
 ---
 
-## 🔌 API Reference
+##  API Reference
 
 ```
 POST   /api/auth/register
@@ -137,7 +137,7 @@ POST   /api/ai/explain               Shared: AI explanation (cached)
 
 ---
 
-## 🤖 AI Rate Limiting
+##  AI Rate Limiting
 
 To stay within the free tier, the backend enforces its own limits before hitting the API:
 
@@ -150,7 +150,7 @@ Explanations are **cached per question in MongoDB** — the same question never 
 
 ---
 
-## 🔒 Auth & Roles
+##  Auth & Roles
 
 - JWT stored in `localStorage`, sent as `Bearer` token
 - Two roles: `admin` and `student`
@@ -159,7 +159,7 @@ Explanations are **cached per question in MongoDB** — the same question never 
 
 ---
 
-## 🧠 AI Features
+## AI Features
 
 ### Quiz Generation
 Upload a PDF, DOCX, or paste text → Gemini reads it and generates structured MCQ questions with difficulty ratings, which are pre-filled into the quiz editor for review before saving.
@@ -169,7 +169,7 @@ After submitting a quiz, students can click **"Show AI Explanation"** on any que
 
 ---
 
-## 📄 License
+## License
 
 MIT — free to use, modify and distribute.
 
